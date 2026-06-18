@@ -1,0 +1,12 @@
+# Datasets & archives (huge — never commit)
+*.zip
+data/
+sample/
+
+# Caches & artifacts
+*.npz
+__pycache__/
+*.pyc
+
+# Environment
+.venv/
