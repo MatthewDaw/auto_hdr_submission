@@ -76,7 +76,7 @@ def score(A,files,groups):
 def main():
     rd=np.load(f"{DATA}/raw256.npz",allow_pickle=True); raw=rd["imgs"]; gid=rd["gid"]; files=list(rd["files"])
     d=np.load(f"{DATA}/feat_cache.npz",allow_pickle=True); assert list(d["files"])==files
-    n=len(files); G=(d["M"]@d["M"].T).astype(np.float32)
+    n=len(files); t_pipe=time.time(); G=(d["M"]@d["M"].T).astype(np.float32)
     t0=time.time(); E=descriptor.embed(raw); te=time.time()-t0      # wavelet+eigenface (training-free)
     print(f"{DATA}: descriptor extract {te:.1f}s ({te/n*1000:.2f} ms/img)")
     Es=(E@E.T).astype(np.float32)
@@ -274,6 +274,13 @@ def main():
                     pii=[i for i in lab2idx[L] if gidarr[i]==g]; foreign=sorted(set(gidarr[i] for i in lab2idx[L])-{g})
                     pieces.append(f"[n{len(pii)} B{int(B[pii].min())}-{int(B[pii].max())}{' +'+','.join(foreign) if foreign else ''}]")
                 print(f"  DIAG g{g} OVER-SPLIT n{len(gi)} {br} into {len(labs)}: {' '.join(pieces)}")
+    # ---- end-to-end timing: only the embedding-extract stage differs from the old
+    # CNN pipeline (fusion+cluster+refine is identical), so the CNN total is the same
+    # run with the extract stage swapped for the CNN's measured 3.19 ms/img. ----
+    tot=time.time()-t_pipe; rest=tot-te
+    cnn_ms=3.19; cnn_tot=rest+cnn_ms/1000*n
+    print(f"  [TIMING] n={n}  embed-extract={te:.1f}s ({te/n*1000:.2f} ms/img)  cluster+refine={rest:.1f}s")
+    print(f"  [TIMING] END-TO-END ours={tot:.1f}s ({tot/n*1000:.1f} ms/img)  |  with CNN extract={cnn_tot:.1f}s ({cnn_tot/n*1000:.1f} ms/img)")
     # validation: are flagged-unfixable groups actually ones the pipeline misses?
     flagged_but_solved=sorted((ok1 & unfix))
     print(f"  [validation] flagged-unfixable that pipeline SOLVED (should be ~0): {len(flagged_but_solved)} {flagged_but_solved[:15]}")
