@@ -158,7 +158,17 @@ def main():
                 mz,cnt=masked_zncc(gm[x][0],gm[x][1],gm[y][0],gm[y][1])
                 if mz>best[0]: best=(mz,cnt,g)
             mz,cnt,g=best
-            if cnt>=1500 and ((mz>=0.62 and g<=120) or (mz>=0.50 and cnt>=15000)):
+            # well-exposed-rep path: same scene split into two pieces at OVERLAPPING
+            # exposures (no >=25 brightness step, so the clipped-bridge rule can't fire,
+            # e.g. 60452). Their well-exposed reps still masked-match strongly if it's one
+            # scene (different rooms score ~0.30), so that is the discriminator here.
+            we1=[k for k in cl[c] if 50<=B[k]<=205]; we2=[k for k in cl[c2] if 50<=B[k]<=205]
+            wmz=-1.0
+            if we1 and we2:
+                r1=min(we1,key=lambda k:abs(B[k]-128)); r2=min(we2,key=lambda k:abs(B[k]-128))
+                wm,wc=masked_zncc(gm[r1][0],gm[r1][1],gm[r2][0],gm[r2][1])
+                if wc>=1500: wmz=wm
+            if (cnt>=1500 and ((mz>=0.62 and g<=120) or (mz>=0.50 and cnt>=15000))) or wmz>=float(os.environ.get('WMZ',0.55)):
                 parent[find(c)]=find(c2); merged+=1
     # apply merges
     for c in cids:
@@ -215,7 +225,7 @@ def main():
         # Pass 3: over-merged DIFFERENT rooms connected only by a weak bridge — split by
         # WELL-EXPOSED sub-scenes (masked reliable there), then assign every frame to the
         # sub-scene it best masked-matches. Tightness guard avoids splitting varied groups.
-        if not changed:
+        if not changed and not os.environ.get("P3OFF"):
             welli=[i for i in range(k) if 55<=B[mem[i]]<=200]
             if len(welli)>=4:
                 WG=np.zeros((len(welli),len(welli)),bool); wv=[[0]*len(welli) for _ in welli]
@@ -239,6 +249,33 @@ def main():
                         if bestc!=base_c: newlab[m]=nextid+bestc
                     nextid+=wnc; changed=True
         if changed: splits+=1
+    # ---- FIX 2c: re-attach PURE-clipped singletons (B>245 / B<12) left stranded by
+    # the base clustering. Match each against every multi-member cluster's WELL-EXPOSED
+    # rep (full valid coverage -> maximal co-valid overlap with the orphan's few retained
+    # pixels). Decide by a per-orphan UNIQUENESS MARGIN (best vs 2nd best), not a global
+    # threshold -- the probe showed true matches sit at 0.27-0.75 but always beat the best
+    # wrong cluster by a clear gap; a fixed threshold both missed the low ones and admitted
+    # false ones. ----
+    T2C=float(os.environ.get("T2C",0.38)); M2C=float(os.environ.get("M2C",0.12)); C2C=int(os.environ.get("C2C",400))
+    fcl=defaultdict(list)
+    for i in range(n): fcl[newlab[i]].append(i)
+    reps={}
+    for c,mem in fcl.items():
+        we=[k for k in mem if 50<=B[k]<=205]
+        if len(mem)>=2 and we: reps[c]=min(we,key=lambda k:abs(B[k]-128))
+    addc=0
+    for i in range(n):
+        if len(fcl[newlab[i]])!=1 or not (B[i]>245 or B[i]<12): continue
+        scored=[]
+        for c,r in reps.items():
+            mz,cnt=masked_zncc(gm[i][0],gm[i][1],gm[r][0],gm[r][1])
+            if cnt>=C2C: scored.append((mz,c))
+        scored.sort(reverse=True)
+        if scored and scored[0][0]>=T2C and (len(scored)==1 or scored[0][0]-scored[1][0]>=M2C):
+            newlab[i]=scored[0][1]; addc+=1
+            sec=scored[1][0] if len(scored)>1 else -1
+            if os.environ.get("DIAG"): print(f"  FIX2c+ g{gidarr[i]}(B{B[i]:.0f})->g{gidarr[reps[scored[0][1]]]} mz={scored[0][0]:.2f} margin={scored[0][0]-sec:.2f}{' <<DIFF' if gidarr[i]!=gidarr[reps[scored[0][1]]] else ''}")
+    print(f"  +FIX2c pure-clipped re-attach (added {addc})")
     predm=defaultdict(set)
     for i,f in enumerate(files): predm[newlab[i]].add(f)
     predlk=set(frozenset(v) for v in predm.values())

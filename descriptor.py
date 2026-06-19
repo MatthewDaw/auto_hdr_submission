@@ -31,7 +31,11 @@ def color_features(bgr):
 
 def _pca(W, dim, drop_first):
     k = min(dim, W.shape[0], W.shape[1])
-    P = PCA(n_components=k, whiten=True).fit_transform(W)
+    # svd_solver='full' for DETERMINISM: the size-triggered 'randomized' default is
+    # unseeded, making the embedding — and downstream borderline merges — vary run to
+    # run. 'full' is exact and reproducible (a few extra seconds on the one-time batch
+    # fit; per-image online extract is unaffected).
+    P = PCA(n_components=k, whiten=True, svd_solver="full").fit_transform(W)
     if drop_first and P.shape[1] > drop_first:
         P = P[:, drop_first:]
     return (P / (np.linalg.norm(P, axis=1, keepdims=True) + 1e-9)).astype(np.float32)

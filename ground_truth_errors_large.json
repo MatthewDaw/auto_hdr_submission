@@ -744,6 +744,48 @@
    "frames": null,
    "subscenes": 2,
    "members": []
+  },
+  "56453": {
+   "reason": "information-limited: contains a B2 frame with ~0.1% valid pixels (structurally dead); rest of group coherent at masked 0.85",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "56460": {
+   "reason": "information-limited: contains a B0 frame with ~0.1% valid pixels (structurally dead); rest coherent at 0.82",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "22901": {
+   "reason": "information-limited: ENTIRE group underexposed (all frames B2-52, no well-exposed reference exists)",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "35098": {
+   "reason": "information-limited: B254 pure-white frame, own-group match only 0.27 (below structural-signal floor); rest coherent at 0.72",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "10370": {
+   "reason": "information-limited: B254 pure-white frame (0.8% valid px) matches own room 0.43 vs a DIFFERENT room 0.42 - indistinguishable",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "82871": {
+   "reason": "information-limited: B253 frame ties its own room (0.33) with a different room (0.33); rest coherent at 0.84",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "70877": {
+   "reason": "information-limited: near-black B2/B9 frames are noise-dominated (own match 0.03/0.09 < wrong-room 0.17/0.30); rest coherent at 0.97",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
   }
  }
 }
