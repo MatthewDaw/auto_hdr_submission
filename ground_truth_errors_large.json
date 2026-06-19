@@ -720,6 +720,30 @@
    "frames": null,
    "subscenes": 2,
    "members": []
+  },
+  "9245": {
+   "reason": "multi-scene mislabel (well-exposed sub-scenes are different rooms; coherence 0.17 < 0.4)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
+  },
+  "38084": {
+   "reason": "multi-scene mislabel (well-exposed sub-scenes are different rooms; coherence 0.27 < 0.4)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
+  },
+  "73234": {
+   "reason": "multi-scene mislabel (well-exposed sub-scenes are different rooms; coherence 0.32 < 0.4)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
+  },
+  "40667": {
+   "reason": "multi-scene mislabel (well-exposed sub-scenes are different rooms; coherence 0.36 < 0.4)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
   }
  }
 }

@@ -71,8 +71,10 @@ def main():
     for j in range(n): clmembers[lab0[j]].append(j)
     clstep={c:(np.median(np.diff(np.sort(B[mem]))) if len(mem)>=2 else 80.0) for c,mem in clmembers.items()}
     clipped=[i for i in range(n) if B[i]<45 or B[i]>210]
+    gidarr=np.asarray(gid)
     A=A0.copy(); added=0
     for i in clipped:
+        if len(clmembers[lab0[i]])>2: continue        # only re-attach orphans; don't bridge two real clusters
         scored=[]
         for c,mem in clmembers.items():
             if c==lab0[i]: continue
@@ -83,7 +85,8 @@ def main():
         if scored:
             second=scored[1][0] if len(scored)>1 else -1
             if scored[0][0]-second>=MARGIN or second<MASK_THR:
-                A[scored[0][1],i]=A[i,scored[0][1]]=True; added+=1
+                bj=scored[0][1]; A[bj,i]=A[i,bj]=True; added+=1
+                if gidarr[i]!=gidarr[bj]: print(f"  FIX2 DIFF-edge g{gidarr[i]}(B{B[i]:.0f})->g{gidarr[bj]}(B{B[bj]:.0f}) mz={scored[0][0]:.2f}")
     ok1,_=score(A,files,groups)
     print(f"{DATA}: +FIX2 ladder re-attach (added {added}) {len(ok1)}/{len(groups)} = {len(ok1)/len(groups):.4f}")
     print(f"  recovered: {sorted(ok1-ok0)}   broken: {sorted(ok0-ok1)}")
@@ -104,12 +107,19 @@ def main():
     def find(x):
         while parent[x]!=x: parent[x]=parent[parent[x]]; x=parent[x]
         return x
+    cb={c:B[cl[c]].mean() for c in cids}
+    cbarr=np.array([cb[c] for c in cids])
     merged=0
     for ai,c in enumerate(cids):
-        near=np.argsort(-csim[ai])[1:13]
-        for bi in near:
+        # candidates: embedding-near; plus, for SMALL or CLIPPED clusters (the split
+        # pieces), the brightness-nearest clusters. Masked bridge below = precision guard.
+        near=set(np.argsort(-csim[ai])[1:20].tolist())
+        mem=cl[c]
+        if len(mem)<=3 or (B[mem]<45).any() or (B[mem]>210).any():
+            near|=set(np.argsort(np.abs(cbarr-cb[c]))[1:15].tolist())
+        for bi in sorted(near):                       # deterministic order
             c2=cids[bi]
-            if find(c)==find(c2) or csim[ai,bi]<0.45: continue
+            if find(c)==find(c2): continue
             # best brightness-adjacent cross-frame masked link
             best=(-1,0,999)
             for x in cl[c]:
@@ -172,6 +182,32 @@ def main():
                 for i,m in enumerate(mem):
                     if sizes[sub[i]]>=2 and sub[i]!=big: newlab[m]=nextid+sub[i]
                 nextid+=nc; changed=True
+        # Pass 3: over-merged DIFFERENT rooms connected only by a weak bridge — split by
+        # WELL-EXPOSED sub-scenes (masked reliable there), then assign every frame to the
+        # sub-scene it best masked-matches. Tightness guard avoids splitting varied groups.
+        if not changed:
+            welli=[i for i in range(k) if 55<=B[mem[i]]<=200]
+            if len(welli)>=4:
+                WG=np.zeros((len(welli),len(welli)),bool); wv=[[0]*len(welli) for _ in welli]
+                for a in range(len(welli)):
+                    for b in range(a+1,len(welli)):
+                        v,_=masked_zncc(gm[mem[welli[a]]][0],gm[mem[welli[a]]][1],gm[mem[welli[b]]][0],gm[mem[welli[b]]][1])
+                        wv[a][b]=wv[b][a]=v
+                        if v>=0.45: WG[a,b]=WG[b,a]=True
+                wnc,wsub=connected_components(csr_matrix(WG),directed=False)
+                wsizes=np.bincount(wsub,minlength=wnc); wmulti=[c2 for c2 in range(wnc) if wsizes[c2]>=2]
+                def wtight(c2):
+                    ii=[t for t in range(len(welli)) if wsub[t]==c2]; mn=2.0
+                    for a in range(len(ii)):
+                        for b in range(a+1,len(ii)): mn=min(mn,wv[ii[a]][ii[b]])
+                    return mn
+                if len(wmulti)>=2 and all(wtight(c2)>=0.6 for c2 in wmulti):
+                    reps={c2:min([welli[t] for t in range(len(welli)) if wsub[t]==c2],key=lambda ii:abs(B[mem[ii]]-128)) for c2 in wmulti}
+                    base_c=wmulti[0]
+                    for i,m in enumerate(mem):
+                        bestc=max(wmulti,key=lambda c2:masked_zncc(gm[mem[reps[c2]]][0],gm[mem[reps[c2]]][1],gm[m][0],gm[m][1])[0])
+                        if bestc!=base_c: newlab[m]=nextid+bestc
+                    nextid+=wnc; changed=True
         if changed: splits+=1
     predm=defaultdict(set)
     for i,f in enumerate(files): predm[newlab[i]].add(f)
