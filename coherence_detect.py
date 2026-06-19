@@ -22,7 +22,7 @@ col=np.load(DATA/"img128c.npz",allow_pickle=True)["imgs"]
 files=list(np.load(DATA/"raw256.npz",allow_pickle=True)["files"])
 idxof={f:i for i,f in enumerate(files)}
 g2f=defaultdict(list)
-for r in csv.DictReader(open(DATA/"public_manifest.csv")): g2f[r["group_id"]].append(r["filename"])
+for r in csv.DictReader(open(DATA/"public_manifest.csv", encoding="utf-8")): g2f[r["group_id"]].append(r["filename"])
 
 clahe=cv2.createCLAHE(3.0,(8,8))
 def grad_mask(r):

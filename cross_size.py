@@ -50,7 +50,7 @@ def _feat(args):
 def load_dir(DATA):
     DATA = Path(DATA); cache = DATA / "feat_cache.npz"
     groups = defaultdict(set); f2g = {}
-    for r in csv.DictReader(open(DATA / "public_manifest.csv")):
+    for r in csv.DictReader(open(DATA / "public_manifest.csv", encoding="utf-8")):
         groups[r["group_id"]].add(r["filename"]); f2g[r["filename"]] = r["group_id"]
     files = sorted(f2g.keys())
     if cache.exists():

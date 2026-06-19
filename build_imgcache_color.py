@@ -27,7 +27,7 @@ def proc(fname):
 
 def main():
     f2g = {}
-    for r in csv.DictReader(open(DATA / "public_manifest.csv")):
+    for r in csv.DictReader(open(DATA / "public_manifest.csv", encoding="utf-8")):
         f2g[r["filename"]] = r["group_id"]
     files = sorted(f2g.keys())
     cv2.setNumThreads(1)

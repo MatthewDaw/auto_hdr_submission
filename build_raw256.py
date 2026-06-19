@@ -18,7 +18,7 @@ def proc(f):
     if im is None: return np.zeros((RES,RES),np.uint8)
     return cv2.resize(im,(RES,RES),interpolation=cv2.INTER_AREA)
 def main():
-    f2g={r["filename"]:r["group_id"] for r in csv.DictReader(open(DATA/"public_manifest.csv"))}
+    f2g={r["filename"]:r["group_id"] for r in csv.DictReader(open(DATA/"public_manifest.csv", encoding="utf-8"))}
     files=sorted(f2g); cv2.setNumThreads(1)
     with Pool(max(1,cpu_count()-1)) as pool: imgs=np.array(list(pool.imap(proc,files,chunksize=16)),np.uint8)
     np.savez(OUT,imgs=imgs,files=np.array(files),gid=np.array([f2g[f] for f in files]))
