@@ -76,7 +76,7 @@ def main():
     mc=Model().to(DEV); mc.load_state_dict(torch.load("embed2_best.pt"))
     li,gid,files=load_lab(f"{DATA}/img128c.npz"); d=np.load(f"{DATA}/feat_cache.npz",allow_pickle=True)
     raw=np.load(f"{DATA}/raw256.npz",allow_pickle=True)["imgs"]; assert list(d["files"])==files
-    n=len(files); G=(d["M"]@d["M"].T).astype(np.float32); Es=(emb(mc,li)@emb(mc,li).T).astype(np.float32)
+    n=len(files); G=(d["M"]@d["M"].T).astype(np.float32); E=emb(mc,li); Es=(E@E.T).astype(np.float32)
     B=np.array([raw[i].mean() for i in range(n)]); Fz=(W_GRAD*G+(1-W_GRAD)*Es).astype(np.float32)
     groups=defaultdict(set)
     for f,g in zip(files,gid): groups[g].add(f)
@@ -103,6 +103,50 @@ def main():
     ok1,_=score(A,files,groups)
     print(f"{DATA}: +FIX2 ladder re-attach (added {added}) {len(ok1)}/{len(groups)} = {len(ok1)/len(groups):.4f}")
     print(f"  recovered: {sorted(ok1-ok0)}   broken: {sorted(ok0-ok1)}")
+
+    # ---- FIX 4: embedding-guided cluster merge via masked bridging ----
+    # Recovers over-splits where same-scene pieces were split by the fusion
+    # threshold. Merge two embedding-near clusters if their brightness-adjacent
+    # frames have a strong masked link (gap>=25). Lookalikes score ~0.30 masked
+    # (vs same-scene >=0.45), so masked is the discriminator.
+    np.fill_diagonal(A,False); _,lab=connected_components(csr_matrix(A),directed=False)
+    cl=defaultdict(list)
+    for j in range(n): cl[lab[j]].append(j)
+    cids=list(cl.keys())
+    cent={c:E[cl[c]].mean(0) for c in cids}
+    cent={c:v/ (np.linalg.norm(v)+1e-9) for c,v in cent.items()}
+    cmat=np.stack([cent[c] for c in cids]); csim=cmat@cmat.T
+    parent={c:c for c in cids}
+    def find(x):
+        while parent[x]!=x: parent[x]=parent[parent[x]]; x=parent[x]
+        return x
+    merged=0
+    for ai,c in enumerate(cids):
+        near=np.argsort(-csim[ai])[1:13]
+        for bi in near:
+            c2=cids[bi]
+            if find(c)==find(c2) or csim[ai,bi]<0.45: continue
+            # best brightness-adjacent cross-frame masked link
+            best=(-1,0,999)
+            for x in cl[c]:
+                y=min(cl[c2],key=lambda k:abs(B[k]-B[x])); g=abs(B[x]-B[y])
+                if g<25: continue
+                mz,cnt=masked_zncc(gm[x][0],gm[x][1],gm[y][0],gm[y][1])
+                if mz>best[0]: best=(mz,cnt,g)
+            mz,cnt,g=best
+            if cnt>=1500 and ((mz>=0.62 and g<=120) or (mz>=0.50 and cnt>=15000)):
+                parent[find(c)]=find(c2); merged+=1
+    # apply merges
+    for c in cids:
+        for j in cl[c]:
+            r=find(c)
+            if r!=c:
+                # connect a representative edge
+                A[cl[c][0], cl[r][0]]=A[cl[r][0], cl[c][0]]=True
+    ok1b,_=score(A,files,groups)
+    print(f"{DATA}: +FIX4 cluster-merge (merged {merged}) {len(ok1b)}/{len(groups)} = {len(ok1b)/len(groups):.4f}")
+    print(f"  FIX4 recovered: {sorted(ok1b-ok1)}   FIX4 broken: {sorted(ok1-ok1b)}")
+    ok1=ok1b
     # Exclude genuinely-unfixable ground-truth-error groups
     unfix=load_unfixable(); fixable={g for g in groups if g not in unfix}
     okf=ok1 & fixable
