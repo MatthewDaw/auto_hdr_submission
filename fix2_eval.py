@@ -37,10 +37,19 @@ def grad_mask(raw):
     gx=cv2.Sobel(g,cv2.CV_32F,1,0,ksize=3); gy=cv2.Sobel(g,cv2.CV_32F,0,1,ksize=3)
     return cv2.magnitude(gx,gy),((raw>=VLO)&(raw<=VHI))
 def masked_zncc(m1,v1,m2,v2):
-    v=(v1&v2).ravel()
-    if v.mean()<MIN_VALID: return -1.0
+    v=(v1&v2).ravel(); cnt=int(v.sum())
+    if cnt<200: return -1.0,cnt
     a=m1.ravel()[v]-m1.ravel()[v].mean(); b=m2.ravel()[v]-m2.ravel()[v].mean()
-    return float(a@b/(np.linalg.norm(a)*np.linalg.norm(b)+1e-9))
+    return float(a@b/(np.linalg.norm(a)*np.linalg.norm(b)+1e-9)),cnt
+
+def accept_edge(mz,cnt,gap,step):
+    # refined accept rule (calibrated on full-set edges):
+    # require a real exposure step (gap>=25) and a valid-pixel floor; then either
+    # a strong masked match within the ladder, or a huge well-exposed overlap.
+    if gap<25 or cnt<1500: return False
+    if mz>=0.58 and gap<=1.8*max(step,30.0): return True   # strong ladder extension
+    if mz>=0.50 and cnt>=15000: return True                # large well-exposed overlap
+    return False
 def best_thr(sim,files,groups):
     refsets=set(frozenset(v) for v in groups.values()); best=(-1,None)
     for t in np.arange(0.15,0.97,0.01):
@@ -84,10 +93,10 @@ def main():
         for c,mem in clmembers.items():
             if c==lab0[i]: continue
             j=min(mem,key=lambda k:abs(B[k]-B[i]))
-            if abs(B[i]-B[j])>1.8*max(clstep[c],30.0): continue
-            mz=masked_zncc(gm[i][0],gm[i][1],gm[j][0],gm[j][1]); scored.append((mz,j))
+            mz,cnt=masked_zncc(gm[i][0],gm[i][1],gm[j][0],gm[j][1])
+            if accept_edge(mz,cnt,abs(B[i]-B[j]),clstep[c]): scored.append((mz,j))
         scored.sort(reverse=True)
-        if scored and scored[0][0]>=MASK_THR:
+        if scored:
             second=scored[1][0] if len(scored)>1 else -1
             if scored[0][0]-second>=MARGIN or second<MASK_THR:
                 A[scored[0][1],i]=A[i,scored[0][1]]=True; added+=1
