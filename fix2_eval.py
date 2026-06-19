@@ -87,6 +87,13 @@ def main():
             if scored[0][0]-second>=MARGIN or second<MASK_THR:
                 bj=scored[0][1]; A[bj,i]=A[i,bj]=True; added+=1
                 if gidarr[i]!=gidarr[bj]: print(f"  FIX2 DIFF-edge g{gidarr[i]}(B{B[i]:.0f})->g{gidarr[bj]}(B{B[bj]:.0f}) mz={scored[0][0]:.2f}")
+    # NOTE: the remaining ~8 over-splits are a single PURE-clipped orphan (B0/B254)
+    # stranded from an otherwise-correct cluster. probe_orphans.py confirms these are
+    # at the physical information limit: true-vs-wrong masked separation is 0.02-0.20
+    # (own mz often <0.45 on a few hundred valid pixels), below the noise floor — a
+    # threshold that catches the real matches also accepts false ones (a FIX-2b
+    # attempt merged unrelated 11479+25886). Several groups are double-stranded with a
+    # truly-hopeless B0/B2 frame (validfrac~0.001), so unrecoverable under exact-set.
     ok1,_=score(A,files,groups)
     print(f"{DATA}: +FIX2 ladder re-attach (added {added}) {len(ok1)}/{len(groups)} = {len(ok1)/len(groups):.4f}")
     print(f"  recovered: {sorted(ok1-ok0)}   broken: {sorted(ok0-ok1)}")
@@ -223,6 +230,27 @@ def main():
     print(f"  FIXABLE-only score: {len(okf)}/{len(fixable)} = {len(okf)/len(fixable):.4f}")
     missed_fixable=sorted(fixable-ok1)
     print(f"  still-missed FIXABLE groups ({len(missed_fixable)}): {missed_fixable[:25]}")
+    if os.environ.get("DIAG"):
+        f2i={f:i for i,f in enumerate(files)}
+        lab2idx=defaultdict(list)
+        for i in range(n): lab2idx[newlab[i]].append(i)
+        for g in missed_fixable:
+            gi=[f2i[f] for f in groups[g]]; labs=set(newlab[i] for i in gi)
+            br=f"B[{int(B[gi].min())}..{int(B[gi].max())}]"
+            if len(labs)==1:                       # OVER-MERGE: group sits in one cluster with others
+                L=labs.pop(); others=sorted(set(gidarr[i] for i in lab2idx[L])-{g})
+                # masked between this group's well-rep and each contaminating group's well-rep
+                wr=min(gi,key=lambda i:abs(B[i]-128)); det=[]
+                for o in others:
+                    oi=[i for i in lab2idx[L] if gidarr[i]==o]; owr=min(oi,key=lambda i:abs(B[i]-128))
+                    mz,_=masked_zncc(gm[wr][0],gm[wr][1],gm[owr][0],gm[owr][1]); det.append(f"g{o}(mz={mz:.2f},n{len(oi)})")
+                print(f"  DIAG g{g} OVER-MERGE n{len(gi)} {br} +{others if not det else ' '.join(det)}")
+            else:                                   # OVER-SPLIT: group's frames in multiple clusters
+                pieces=[]
+                for L in labs:
+                    pii=[i for i in lab2idx[L] if gidarr[i]==g]; foreign=sorted(set(gidarr[i] for i in lab2idx[L])-{g})
+                    pieces.append(f"[n{len(pii)} B{int(B[pii].min())}-{int(B[pii].max())}{' +'+','.join(foreign) if foreign else ''}]")
+                print(f"  DIAG g{g} OVER-SPLIT n{len(gi)} {br} into {len(labs)}: {' '.join(pieces)}")
     # validation: are flagged-unfixable groups actually ones the pipeline misses?
     flagged_but_solved=sorted((ok1 & unfix))
     print(f"  [validation] flagged-unfixable that pipeline SOLVED (should be ~0): {len(flagged_but_solved)} {flagged_but_solved[:15]}")
