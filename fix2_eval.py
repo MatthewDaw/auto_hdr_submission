@@ -12,7 +12,8 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 
 DATA=sys.argv[1] if len(sys.argv)>1 else "sample"
-VLO,VHI=8,247; W_GRAD=0.65; MASK_THR=0.58; MIN_VALID=0.03; MARGIN=0.12
+VLO,VHI=8,247; W_GRAD=float(os.environ.get("WGRAD",0.65)); MASK_THR=0.58; MIN_VALID=0.03; MARGIN=0.12
+EDGE_DM=float(os.environ.get("EDGE_DM",0.0))   # sensitivity: shift accept_edge masked thresholds
 clahe=cv2.createCLAHE(3.0,(8,8))
 def grad_mask(raw):
     g=clahe.apply(raw).astype(np.float32)
@@ -29,8 +30,8 @@ def accept_edge(mz,cnt,gap,step):
     # require a real exposure step (gap>=25) and a valid-pixel floor; then either
     # a strong masked match within the ladder, or a huge well-exposed overlap.
     if gap<25 or cnt<1500: return False
-    if mz>=0.58 and gap<=1.8*max(step,30.0): return True   # strong ladder extension
-    if mz>=0.50 and cnt>=15000: return True                # large well-exposed overlap
+    if mz>=0.58+EDGE_DM and gap<=1.8*max(step,30.0): return True   # strong ladder extension
+    if mz>=0.50+EDGE_DM and cnt>=15000: return True                # large well-exposed overlap
     return False
 def best_thr(sim,files,groups):
     refsets=set(frozenset(v) for v in groups.values()); best=(-1,None)
@@ -42,6 +43,24 @@ def best_thr(sim,files,groups):
         sc=len(refsets&set(frozenset(v) for v in pred.values()))/len(refsets)
         if sc>best[0]: best=(sc,A.copy())
     return best
+def plateau_thr(sim,files):
+    # LABEL-FREE threshold: the knee of the predicted-group-count vs threshold
+    # curve (flattest local slope = most stable clustering). Mirrors selector.py
+    # but runs on the fusion sim. No labels used.
+    grid=np.arange(0.20,0.90,0.01)
+    counts=[]
+    for t in grid:
+        A=sim>=t; np.fill_diagonal(A,False)
+        nc,_=connected_components(csr_matrix(A),directed=False); counts.append(nc)
+    counts=np.array(counts,float); W=3
+    slope=np.full(len(grid),np.inf)
+    for i in range(W,len(grid)-W): slope[i]=(counts[i+W]-counts[i-W])/(2*W)
+    slope[counts<=0.5*counts.max()]=np.inf
+    smin=slope[np.isfinite(slope)].min(); cut=1.3*smin+0.5
+    sel_i=int(np.where(np.isfinite(slope)&(slope<=cut))[0][0]); t=grid[sel_i]
+    A=sim>=t; np.fill_diagonal(A,False)
+    return t,A
+
 def load_unfixable():
     p=f"{DATA}/unfixable.json"
     return set(json.load(open(p))["groups"].keys()) if os.path.exists(p) else set()
@@ -64,7 +83,11 @@ def main():
     B=np.array([raw[i].mean() for i in range(n)]); Fz=(W_GRAD*G+(1-W_GRAD)*Es).astype(np.float32)
     groups=defaultdict(set)
     for f,g in zip(files,gid): groups[g].add(f)
-    _,A0=best_thr(Fz,files,groups); ok0,lab0=score(A0,files,groups)
+    if os.environ.get("THR_MODE")=="selector":
+        t_sel,A0=plateau_thr(Fz,files); print(f"  [THR_MODE=selector] label-free plateau thr={t_sel:.2f}")
+    else:
+        _,A0=best_thr(Fz,files,groups)
+    ok0,lab0=score(A0,files,groups)
     print(f"{DATA}: BASE fusion {len(ok0)}/{len(groups)} = {len(ok0)/len(groups):.4f}")
     gm=[grad_mask(raw[i]) for i in range(n)]
     clmembers=defaultdict(list)
