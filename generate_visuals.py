@@ -5,8 +5,8 @@ hand-drawn charts (threshold curve, results bars). Self-contained base64.
 """
 import csv, base64
 from collections import defaultdict
-import numpy as np, cv2, torch, torch.nn as nn, torch.nn.functional as F
-from torchvision.models import mobilenet_v3_small
+import numpy as np, cv2
+import descriptor
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 from sklearn.decomposition import PCA
@@ -54,20 +54,10 @@ print("ladder group",LADG,[int(brt(f)) for f in ladder])
 distinct=[g for g,fs in g2f.items() if 3<=len(fs)<=5 and "DJI" not in fs[0]]
 emap_groups=distinct[:6]
 
-# ---- model for embedding map ----
-class Model(nn.Module):
-    def __init__(s,d=128):
-        super().__init__(); m=mobilenet_v3_small(weights=None)
-        s.backbone=nn.Sequential(m.features,m.avgpool,nn.Flatten()); s.proj=nn.Sequential(nn.Linear(576,256),nn.ReLU(),nn.Linear(256,d))
-    def forward(s,x): return F.normalize(s.proj(s.backbone(x)),dim=1)
-DEV="cuda" if torch.cuda.is_available() else "cpu"
-mc=Model().to(DEV); mc.load_state_dict(torch.load("embed2_best.pt")); mc.eval()
-MEAN=torch.tensor([0.5]*3).view(1,3,1,1).to(DEV); STD=torch.tensor([0.25]*3).view(1,3,1,1).to(DEV)
-@torch.no_grad()
-def embed(f):
-    bgr=cv2.resize(readbgr(f),(128,128)); L=cv2.cvtColor(bgr,cv2.COLOR_BGR2Lab); L[:,:,0]=clahe.apply(L[:,:,0])
-    x=torch.from_numpy(L).float().to(DEV)/255.0; x=x.permute(2,0,1).unsqueeze(0)
-    return mc((x-MEAN)/STD).cpu().numpy()[0]
+# ---- training-free embedding (wavelet + eigenface) for the map ----
+def embed_set(flist):
+    grays=np.stack([cv2.resize(cv2.cvtColor(readbgr(f),cv2.COLOR_BGR2GRAY),(256,256)) for f in flist])
+    return descriptor.embed(grays)
 
 # =================== build images ===================
 FRAG={}
@@ -90,7 +80,7 @@ FRAG['<h2>Key insight</h2>']=('<div style="font-size:.62em;color:#8b949e">raw (v
 
 # Slide: A learned complement — embedding 2D map
 allf=[(g,f) for g in emap_groups for f in g2f[g]]
-embs=np.stack([embed(f) for g,f in allf]); xy=PCA(n_components=2).fit_transform(embs)
+embs=embed_set([f for g,f in allf]); xy=PCA(n_components=2).fit_transform(embs)
 xy-=xy.min(0); xy/=(xy.max(0)+1e-9)
 CW,CH,TS=760,300,52; canvas=np.full((CH,CW,3),22,np.uint8)
 pal=[(76,60,231),(219,152,52),(80,175,76),(34,153,210),(182,89,155),(96,125,139)]  # BGR

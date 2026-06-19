@@ -8,31 +8,13 @@ Usage: finalize_unfixable.py <data_dir>
 import sys, json, base64
 from collections import defaultdict
 from pathlib import Path
-import numpy as np, cv2, torch, torch.nn as nn, torch.nn.functional as F
-from torchvision.models import mobilenet_v3_small
+import numpy as np, cv2
+import descriptor
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 
-DEV="cuda" if torch.cuda.is_available() else "cpu"
 DATA=Path(sys.argv[1] if len(sys.argv)>1 else "sample")
 VLO,VHI=8,247; W_GRAD=0.65; MASK_THR=0.58; MIN_VALID=0.03; MARGIN=0.12
-
-class Model(nn.Module):
-    def __init__(s,dim=128):
-        super().__init__(); m=mobilenet_v3_small(weights=None)
-        s.backbone=nn.Sequential(m.features,m.avgpool,nn.Flatten()); s.proj=nn.Sequential(nn.Linear(576,256),nn.ReLU(),nn.Linear(256,dim))
-    def forward(s,x): return F.normalize(s.proj(s.backbone(x)),dim=1)
-def load_lab(p):
-    d=np.load(p,allow_pickle=True); bgr=d["imgs"]; cl=cv2.createCLAHE(3.0,(8,8)); lab=np.empty_like(bgr)
-    for i in range(len(bgr)):
-        L=cv2.cvtColor(bgr[i],cv2.COLOR_BGR2Lab); L[:,:,0]=cl.apply(L[:,:,0]); lab[i]=L
-    return lab,d["gid"],list(d["files"])
-@torch.no_grad()
-def emb(model,lab,bs=256):
-    model.eval(); M=torch.tensor([0.5]*3).view(1,3,1,1).to(DEV); S=torch.tensor([0.25]*3).view(1,3,1,1).to(DEV); out=[]
-    for i in range(0,len(lab),bs):
-        x=torch.from_numpy(lab[i:i+bs]).float().to(DEV)/255.0; x=x.permute(0,3,1,2); out.append(model((x-M)/S).cpu().numpy())
-    return np.concatenate(out)
 clahe=cv2.createCLAHE(3.0,(8,8))
 def grad_mask(r):
     g=clahe.apply(r).astype(np.float32); gx=cv2.Sobel(g,cv2.CV_32F,1,0,3); gy=cv2.Sobel(g,cv2.CV_32F,0,1,3)
@@ -44,10 +26,10 @@ def mzncc(m1,v1,m2,v2):
     return float(a@b/(np.linalg.norm(a)*np.linalg.norm(b)+1e-9))
 
 def pipeline_solved():
-    li,gid,files=load_lab(f"{DATA}/img128c.npz"); d=np.load(f"{DATA}/feat_cache.npz",allow_pickle=True)
-    raw=np.load(f"{DATA}/raw256.npz",allow_pickle=True)["imgs"]; n=len(files)
-    G=(d["M"]@d["M"].T).astype(np.float32); mc=Model().to(DEV); mc.load_state_dict(torch.load("embed2_best.pt"))
-    Es=(emb(mc,li)@emb(mc,li).T).astype(np.float32); B=np.array([raw[i].mean() for i in range(n)])
+    rd=np.load(f"{DATA}/raw256.npz",allow_pickle=True); raw=rd["imgs"]; gid=rd["gid"]; files=list(rd["files"])
+    d=np.load(f"{DATA}/feat_cache.npz",allow_pickle=True); n=len(files)
+    G=(d["M"]@d["M"].T).astype(np.float32); E=descriptor.embed(raw)
+    Es=(E@E.T).astype(np.float32); B=np.array([raw[i].mean() for i in range(n)])
     Fz=(W_GRAD*G+(1-W_GRAD)*Es).astype(np.float32)
     groups=defaultdict(set)
     for f,g in zip(files,gid): groups[g].add(f)
