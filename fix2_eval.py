@@ -147,6 +147,51 @@ def main():
     print(f"{DATA}: +FIX4 cluster-merge (merged {merged}) {len(ok1b)}/{len(groups)} = {len(ok1b)/len(groups):.4f}")
     print(f"  FIX4 recovered: {sorted(ok1b-ok1)}   FIX4 broken: {sorted(ok1-ok1b)}")
     ok1=ok1b
+
+    # ---- FIX 5: high-resolution masked SPLIT of coarse-descriptor over-merges ----
+    # The 64x64 fusion descriptor over-merges similar-layout-but-different rooms
+    # (fusion ~0.70, but 256px masked ~0.30). Re-cluster each predicted cluster's
+    # members by 256px masked ZNCC; if it fragments, the cluster was over-merged.
+    # Exposure-ladder chaining is preserved (all-pairs CC bridges via intermediates).
+    np.fill_diagonal(A,False); _,lab=connected_components(csr_matrix(A),directed=False)
+    cl5=defaultdict(list)
+    for j in range(n): cl5[lab[j]].append(j)
+    newlab=lab.copy(); nextid=int(lab.max())+1; splits=0
+    for c,mem in cl5.items():
+        if len(mem)<4: continue                       # only sizable clusters can be over-merges
+        k=len(mem); IM=np.zeros((k,k),bool)
+        for a in range(k):
+            for b in range(a+1,k):
+                mz,cnt=masked_zncc(gm[mem[a]][0],gm[mem[a]][1],gm[mem[b]][0],gm[mem[b]][1])
+                if mz>=0.38: IM[a,b]=IM[b,a]=True
+        nc,sub=connected_components(csr_matrix(IM),directed=False)
+        if nc<2: continue
+        sizes=np.bincount(sub); big=int(np.argmax(sizes))
+        multi=[c2 for c2 in range(nc) if sizes[c2]>=2]
+        if len(multi)<2: continue                     # need >=2 real sub-groups
+        # OVER-MERGE SIGNATURE: each multi-frame sub-component must be internally TIGHT
+        # (a complete bracket set), i.e. min internal masked high. Legitimate varied
+        # groups (e.g. one group of distinct views) lack this clean structure.
+        def comp_min(comp):
+            idx=[mem[i] for i in range(k) if sub[i]==comp]; mn=2.0
+            for a in range(len(idx)):
+                for b in range(a+1,len(idx)):
+                    v,_=masked_zncc(gm[idx[a]][0],gm[idx[a]][1],gm[idx[b]][0],gm[idx[b]][1])
+                    mn=min(mn,v)
+            return mn
+        if not all(comp_min(c2)>=0.55 for c2 in multi): continue
+        splits+=1
+        for i,m in enumerate(mem):
+            comp=sub[i]
+            newlab[m]= (nextid+comp) if sizes[comp]>=2 and comp!=big else lab[m]
+        nextid+=nc
+    predm=defaultdict(set)
+    for i,f in enumerate(files): predm[newlab[i]].add(f)
+    predlk=set(frozenset(v) for v in predm.values())
+    ok1c={g for g,v in groups.items() if frozenset(v) in predlk}
+    print(f"{DATA}: +FIX5 high-res split ({splits} clusters split) {len(ok1c)}/{len(groups)} = {len(ok1c)/len(groups):.4f}")
+    print(f"  FIX5 recovered: {sorted(ok1c-ok1)}   FIX5 broken: {sorted(ok1-ok1c)}")
+    ok1=ok1c
     # Exclude genuinely-unfixable ground-truth-error groups
     unfix=load_unfixable(); fixable={g for g in groups if g not in unfix}
     okf=ok1 & fixable
