@@ -107,30 +107,87 @@ W2,H2=720,360; p2=np.full((H2,W2,3),22,np.uint8); x0,y0,x1,y1=60,25,W2-20,H2-50
 cv2.rectangle(p2,(x0,y0),(x1,y1),(55,55,55),1)
 cv2.rectangle(p2,(int(x0+0.40*(x1-x0)),int(y1-0.85*(y1-y0))),(x1,y1),(40,70,40),1)
 cv2.putText(p2,"normal region",(int(x0+0.42*(x1-x0)),y1-8),cv2.FONT_HERSHEY_SIMPLEX,0.4,(90,140,90),1,cv2.LINE_AA)
+rng=np.random.default_rng(0)
+def PX2(c): return int(x0+min(max(c,0),1.0)/1.06*(x1-x0))   # headroom so coherence=1.0 sits inside
+def PY2(v): return int(y1-min(max(v,0),1.0)*(y1-y0))
+# correctly-labeled groups first: visible GREEN cloud (jitter the coherence=1.0 spike so density shows)
 for i in range(N):
-    cx=int(x0+max(0,C[i])*(x1-x0)); cy=int(y1-max(0,min(1,D[i]))*(y1-y0))
-    if FL[i]: cv2.circle(p2,(cx,cy),5,(76,60,231),-1); cv2.circle(p2,(cx,cy),6,(255,255,255),1)
-    else: cv2.circle(p2,(cx,cy),2,(110,110,110),-1)
+    if FL[i]: continue
+    jit=(rng.random()-0.5)*0.05
+    cv2.circle(p2,(PX2(C[i]+jit),PY2(D[i])),3,(90,200,90),-1)
+# flagged outliers on top: RED
+for i in range(N):
+    if not FL[i]: continue
+    cv2.circle(p2,(PX2(C[i]),PY2(D[i])),5,(76,60,231),-1); cv2.circle(p2,(PX2(C[i]),PY2(D[i])),6,(255,255,255),1)
+# legend
+cv2.circle(p2,(x0+14,y0+16),5,(90,200,90),-1); cv2.putText(p2,f"correctly labeled ({N-int(FL.sum())})",(x0+24,y0+20),cv2.FONT_HERSHEY_SIMPLEX,0.42,(200,225,200),1,cv2.LINE_AA)
+cv2.circle(p2,(x0+14,y0+36),5,(76,60,231),-1); cv2.putText(p2,f"flagged outlier ({int(FL.sum())})",(x0+24,y0+40),cv2.FONT_HERSHEY_SIMPLEX,0.42,(180,165,255),1,cv2.LINE_AA)
 cv2.putText(p2,"internal coherence  (low = mixed rooms) ->",(x0,H2-22),cv2.FONT_HERSHEY_SIMPLEX,0.44,(170,170,170),1,cv2.LINE_AA)
 cv2.putText(p2,"cross-group dup",(6,20),cv2.FONT_HERSHEY_SIMPLEX,0.42,(170,170,170),1,cv2.LINE_AA)
 
+# (3) Isolation-Forest intuition diagram: outlier isolated in 1 cut, normal needs many
+W3,H3=420,300; p3=np.full((H3,W3,3),22,np.uint8); bx0,by0,bx1,by1=20,20,W3-20,H3-20
+cv2.rectangle(p3,(bx0,by0),(bx1,by1),(55,55,55),1)
+rg=np.random.default_rng(1)
+clu=np.column_stack([rg.normal(0.62,0.07,40),rg.normal(0.58,0.07,40)])  # normal cluster
+def Q(x,y): return int(bx0+x*(bx1-bx0)),int(by0+y*(by1-by0))
+# many random cuts through the cluster (to isolate a normal point)
+for v in [0.5,0.58,0.66,0.72]: cv2.line(p3,Q(v,0),Q(v,1),(70,70,70),1)
+for v in [0.5,0.6,0.68]: cv2.line(p3,Q(0,v),Q(1,v),(70,70,70),1)
+for x,y in clu: cv2.circle(p3,Q(min(max(x,0),1),min(max(y,0),1)),3,(90,200,90),-1)
+# the outlier + the single cut that isolates it
+ox,oy=0.16,0.16; cv2.line(p3,Q(0.30,0),Q(0.30,1),(76,60,231),2)
+cv2.circle(p3,Q(ox,oy),6,(76,60,231),-1); cv2.circle(p3,Q(ox,oy),7,(255,255,255),1)
+cv2.putText(p3,"outlier: isolated in 1 cut",(Q(ox,oy)[0]-8,Q(ox,oy)[1]-12),cv2.FONT_HERSHEY_SIMPLEX,0.4,(150,120,255),1,cv2.LINE_AA)
+cv2.putText(p3,"normal point: needs many cuts",(Q(0.40,0.92)[0],Q(0.40,0.92)[1]),cv2.FONT_HERSHEY_SIMPLEX,0.4,(140,200,140),1,cv2.LINE_AA)
+cv2.putText(p3,"fewer cuts to isolate = more anomalous",(bx0,H3-4),cv2.FONT_HERSHEY_SIMPLEX,0.4,(170,170,170),1,cv2.LINE_AA)
+
 img1=f'<img src="data:image/png;base64,{enc(p1)}" style="width:520px;border-radius:8px;border:1px solid #30363d">'
 img2=f'<img src="data:image/png;base64,{enc(p2)}" style="width:430px;border-radius:8px;border:1px solid #30363d">'
+img3=f'<img src="data:image/png;base64,{enc(p3)}" style="width:330px;border-radius:8px;border:1px solid #30363d">'
 
 narr=(f"To prove the flagged cases are real outliers, not a judgment call, we pooled every group from both datasets — {N} groups in total — and ran a standard unsupervised outlier detector, an isolation forest, with no labels at all. "
       f"It independently ranks the flagged groups as the most anomalous, separating them from normal groups with an area under the curve of {auc:.2f}. "
-      "On the left, every group sorted by anomaly score: the flagged groups, in red, all sit at the extreme right cliff. On the right, the two-dimensional map again — normal groups pack into one corner, the flagged ones scatter into the outlier regions. The cases we exclude are genuine statistical outliers.")
-slide=('  <section class="slide" data-narr="'+narr+'">\n'
+      "On the left, every group sorted by anomaly score: the flagged groups, in red, all sit at the extreme cliff. On the right, the two-dimensional map: the green dots are the correctly-labeled groups, packed into one corner, while the red flagged ones scatter into the outlier regions. The cases we exclude are genuine statistical outliers.")
+outlier_slide=('  <section class="slide" data-narr="'+narr+'">\n'
     '    <h2>Proving the outliers stand out</h2>\n'
     f'    <p class="mut">Pooled <b class="acc">{N}</b> groups (both datasets). An <b>unsupervised</b> Isolation Forest — <b>no labels</b> — ranks the flagged groups as the top anomalies (AUC <b class="good">{auc:.2f}</b>).</p>\n'
     f'    <div style="display:flex;gap:1em;justify-content:center;flex-wrap:wrap;margin-top:.3em">{img1}{img2}</div>\n'
-    f'    <p class="mut">Left: groups sorted by anomaly score — flagged (red) sit at the cliff. Right: coherence vs cross-group duplication — flagged scatter outside the normal corner.</p>\n'
+    f'    <p class="mut"><span style="color:#3fb950">●</span> correctly labeled (cluster) vs <span style="color:#f85149">●</span> flagged outlier. Left: groups sorted by anomaly score — flagged sit at the cliff.</p>\n'
     '  </section>')
 
+# anomaly-score EXPLAINER slide
+expl_narr=("How is that anomaly score actually computed? In two steps. First, we turn each group into five numbers that describe how 'normal' it is: "
+           "internal coherence — do the group's own well-exposed photos match each other; cross-group duplication — does any photo match a different group's photo; "
+           "the number of distinct sub-scenes inside the group; the median similarity among its members; and the group's size. "
+           "Second, we feed those five numbers, for all fourteen hundred groups, into an isolation forest. It builds hundreds of random decision trees, each repeatedly splitting the groups on a random feature at a random threshold. "
+           "A normal group sits deep in the cloud, so it takes many splits to isolate. An odd group — mixed rooms, or a duplicate — gets cut off almost immediately. "
+           "The anomaly score is simply how few splits it takes to isolate a group, averaged over all the trees. No labels are ever used, yet it cleanly surfaces exactly the groups we flagged.")
+expl_slide=('\n  <section class="slide" data-narr="'+expl_narr+'">\n'
+    '    <h2>How the anomaly score works</h2>\n'
+    '    <div style="display:flex;gap:1.2em;align-items:center;flex-wrap:wrap;justify-content:center">\n'
+    '      <div style="max-width:430px">\n'
+    '        <p style="margin:.2em 0"><b class="acc">Step 1 — 5 features per group</b></p>\n'
+    '        <ul style="margin:.2em 0;font-size:.92em">\n'
+    '          <li><b>internal coherence</b> — do its own photos match? (low = mixed rooms)</li>\n'
+    '          <li><b>cross-group duplication</b> — does a photo match another group?</li>\n'
+    '          <li><b>sub-scene count</b> · <b>median internal similarity</b> · <b>group size</b></li>\n'
+    '        </ul>\n'
+    '        <p style="margin:.4em 0"><b class="acc">Step 2 — Isolation Forest</b> (unsupervised, no labels)</p>\n'
+    '        <p class="mut" style="font-size:.9em">Hundreds of random trees split the groups on random features. <b>Score = how few cuts it takes to isolate a group</b> (averaged) → odd groups isolate fast.</p>\n'
+    '      </div>\n'
+    f'      <div style="text-align:center">{img3}</div>\n'
+    '    </div>\n'
+    f'    <p class="mut">Result: it separates flagged-vs-normal at AUC <b class="good">{auc:.2f}</b> — purely from these 5 numbers, no labels.</p>\n'
+    '  </section>\n')
+
 html=open("algorithm_slideshow.html",encoding="utf-8").read()
-html2=re.sub(r'  <section class="slide" data-narr="To prove the sixteen.*?</section>|  <section class="slide" data-narr="Can we prove.*?</section>', lambda m:slide, html, count=1, flags=re.S)
-if html2==html:  # fallback: match by heading
-    html2=re.sub(r'  <section class="slide"[^>]*>\s*<h2>Proving the outliers stand out</h2>.*?</section>', lambda m:slide, html, count=1, flags=re.S)
+# replace existing outlier slide and append the explainer slide right after it
+html2=re.sub(r'  <section class="slide" data-narr="(To prove|Can we prove|To prove the sixteen).*?</section>',
+             lambda m:outlier_slide+expl_slide, html, count=1, flags=re.S)
+if html2==html:
+    html2=re.sub(r'  <section class="slide"[^>]*>\s*<h2>Proving the outliers stand out</h2>.*?</section>',
+                 lambda m:outlier_slide+expl_slide, html, count=1, flags=re.S)
 assert html2!=html, "outlier slide not found"
 open("algorithm_slideshow.html","w",encoding="utf-8").write(html2)
-print("updated outlier slide with Isolation-Forest proof + more data points")
+print("updated outlier slide (green normals + legend) and added anomaly-score explainer slide")
