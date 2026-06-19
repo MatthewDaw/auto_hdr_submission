@@ -628,81 +628,10 @@
    ]
   },
   "31579": {
-   "reason": "multi-scene/label-noise",
-   "frames": 14,
+   "reason": "duplicate-frame-across-groups (identical frame shared by two different-scene reference groups; bridge=1.00 but scenes differ, masked 0.08)",
+   "frames": null,
    "subscenes": 2,
-   "members": [
-    [
-     "g31579_IMG_2025.jpg",
-     130.18898010253906,
-     0
-    ],
-    [
-     "g31579_IMG_2026.jpg",
-     58.49322509765625,
-     0
-    ],
-    [
-     "g31579_IMG_2027.jpg",
-     208.1035614013672,
-     0
-    ],
-    [
-     "g31579_IMG_2028.jpg",
-     141.82522583007812,
-     0
-    ],
-    [
-     "g31579_IMG_2029.jpg",
-     67.73492431640625,
-     0
-    ],
-    [
-     "g31579_IMG_2030.jpg",
-     214.07559204101562,
-     0
-    ],
-    [
-     "g31579_IMG_2031.jpg",
-     135.44000244140625,
-     0
-    ],
-    [
-     "g31579_IMG_2032.jpg",
-     62.77323913574219,
-     0
-    ],
-    [
-     "g31579_IMG_2033.jpg",
-     210.90899658203125,
-     0
-    ],
-    [
-     "g31579_IMG_2034.jpg",
-     32.07872009277344,
-     0
-    ],
-    [
-     "g31579_IMG_2035.jpg",
-     21.16131591796875,
-     0
-    ],
-    [
-     "g31579_IMG_2036.jpg",
-     56.6829833984375,
-     0
-    ],
-    [
-     "g31579_IMG_2037.jpg",
-     95.58042907714844,
-     0
-    ],
-    [
-     "g31579_IMG_2038.jpg",
-     132.60084533691406,
-     1
-    ]
-   ]
+   "members": []
   },
   "94278": {
    "reason": "multi-scene/label-noise",
@@ -785,6 +714,12 @@
      2
     ]
    ]
+  },
+  "31580": {
+   "reason": "duplicate-frame-across-groups (identical frame shared by two different-scene reference groups; bridge=1.00 but scenes differ, masked 0.08)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
   }
  }
 }

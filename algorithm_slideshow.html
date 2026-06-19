@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoHDR Grouping — Algorithm Walkthrough</title>
+<style>
+  :root{ --bg:#0d1117; --card:#161b22; --fg:#e6edf3; --mut:#8b949e; --acc:#58a6ff; --good:#3fb950; --warn:#d29922; --bad:#f85149; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:18px/1.5 -apple-system,Segoe UI,Roboto,system-ui,sans-serif}
+  #stage{height:100vh;display:flex;align-items:center;justify-content:center;padding:4vh 5vw 12vh}
+  .slide{display:none;max-width:1000px;width:100%;animation:fade .4s ease}
+  .slide.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  h1{font-size:clamp(28px,5vw,52px);margin:0 0 .3em;line-height:1.1}
+  h2{font-size:clamp(22px,3.4vw,36px);margin:0 0 .6em;color:var(--acc)}
+  p,li{font-size:clamp(16px,2.1vw,22px);color:var(--fg)}
+  .mut{color:var(--mut)}
+  .big{font-size:clamp(34px,7vw,72px);font-weight:700;letter-spacing:-1px}
+  ul{margin:.4em 0}
+  li{margin:.45em 0}
+  .pill{display:inline-block;background:var(--card);border:1px solid #30363d;border-radius:999px;padding:.25em .8em;margin:.2em .25em;font-size:.85em}
+  .flow{display:flex;flex-wrap:wrap;gap:.5em;align-items:center;margin:.6em 0}
+  .step{background:var(--card);border:1px solid #30363d;border-radius:10px;padding:.55em .8em;font-size:.82em}
+  .step b{color:var(--acc)}
+  .arr{color:var(--mut)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:1em;margin-top:.6em}
+  .box{background:var(--card);border:1px solid #30363d;border-radius:12px;padding:1em 1.1em}
+  .box h3{margin:.1em 0 .4em;font-size:1em;color:var(--acc)}
+  .kpi{font-size:clamp(30px,6vw,60px);font-weight:800}
+  .good{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)} .acc{color:var(--acc)}
+  code{background:#0b0f14;border:1px solid #30363d;border-radius:6px;padding:.08em .4em;font-size:.9em;color:#c9d1d9}
+  table{border-collapse:collapse;margin-top:.6em;width:100%}
+  td,th{border:1px solid #30363d;padding:.45em .7em;text-align:left;font-size:.92em}
+  th{color:var(--acc)}
+  .swatch{display:inline-block;width:.85em;height:.85em;border-radius:3px;vertical-align:middle;margin-right:.3em}
+  /* controls */
+  #bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:.6em;padding:.7em 1em;background:rgba(13,17,23,.9);border-top:1px solid #30363d;backdrop-filter:blur(6px)}
+  button{background:var(--card);color:var(--fg);border:1px solid #30363d;border-radius:8px;padding:.5em .9em;font-size:15px;cursor:pointer}
+  button:hover{border-color:var(--acc)}
+  #prog{flex:1;height:6px;background:#21262d;border-radius:999px;overflow:hidden}
+  #fill{height:100%;width:0;background:var(--acc);transition:width .3s}
+  #cnt{color:var(--mut);font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
+  .hint{position:fixed;top:12px;right:16px;color:var(--mut);font-size:13px}
+  .tag{font-size:.7em;border-radius:6px;padding:.1em .5em;vertical-align:middle}
+  .tag.fix{background:#132e1a;color:var(--good);border:1px solid #2ea04366}
+</style>
+</head>
+<body>
+<div class="hint">← → navigate · <b>S</b> speak/stop · <b>M</b> mute</div>
+<div id="stage">
+
+  <section class="slide" data-narr="Auto H D R Image Grouping. An end to end walkthrough of an algorithm that sorts real estate photos by camera angle — ignoring exposure, but staying sensitive to tiny scene changes. Everything here runs entirely in a web browser.">
+    <p class="mut">Algorithm walkthrough</p>
+    <h1>AutoHDR Image Grouping</h1>
+    <p class="big acc">Group photos by camera angle</p>
+    <p class="mut">Exposure-invariant · scene-change-sensitive · runs 100% in the browser</p>
+  </section>
+
+  <section class="slide" data-narr="The problem. You get a folder of real estate photos from a shoot. Each camera angle may have been captured several times at different exposures — these are H D R brackets. The job is to figure out which photos belong together, meaning they share the same camera angle and the same scene.">
+    <h2>The problem</h2>
+    <p>A folder of real-estate photos from one shoot. Each <b>camera angle</b> may be shot several times at different <b>exposures</b> (HDR brackets).</p>
+    <p>Goal: <b class="acc">group the photos that belong together</b> — same angle, same scene.</p>
+    <div class="flow">
+      <span class="step">📷 dark</span><span class="step">📷 mid</span><span class="step">📷 bright</span>
+      <span class="arr">→ one group (one angle)</span>
+    </div>
+  </section>
+
+  <section class="slide" data-narr="The twist. Within one angle the camera sits on a fixed tripod and takes a ladder of exposures, from nearly black to nearly white. So the photos are pixel-aligned but look wildly different in brightness. Meanwhile, a tiny real change — a chair moved, a door opened — must split them into different groups. So we must ignore exposure, yet stay sensitive to small scene changes.">
+    <h2>The twist</h2>
+    <div class="grid">
+      <div class="box"><h3>Ignore this</h3><p>Exposure. Same angle = tripod-fixed ladder of brightnesses (black → white). Pixel-aligned, but visually very different.</p></div>
+      <div class="box"><h3>Detect this</h3><p>Small scene changes. A moved chair or open door means a <b>different</b> group, even at the same angle.</p></div>
+    </div>
+    <p class="mut">Invariant to exposure · sensitive to content. That tension is the whole challenge.</p>
+  </section>
+
+  <section class="slide" data-narr="Scoring is brutal. A predicted group counts only if its set of filenames exactly matches a reference group. No partial credit. One missing or extra photo means the whole group scores zero. So merging two angles, or splitting one bracket set, are both fatal. Precision and recall both matter, exactly.">
+    <h2>Scoring is brutal</h2>
+    <p class="big">score = exact_matches / total_groups</p>
+    <ul>
+      <li>A group counts <b>only</b> if the set of filenames matches <b>exactly</b>.</li>
+      <li><span class="bad">No partial credit</span> — one extra or missing photo → that group scores 0.</li>
+      <li>Over-merging two angles <b>and</b> over-splitting one bracket are both fatal.</li>
+    </ul>
+  </section>
+
+  <section class="slide" data-narr="The key insight. Because brackets come from a fixed tripod, photos of the same angle are geometrically identical — they differ only by a brightness curve. So the right signal is the scene's structure, which survives exposure changes, not its raw pixel values, which don't. Find structurally identical photos, ignoring brightness.">
+    <h2>Key insight</h2>
+    <p>Tripod brackets are <b class="acc">geometrically identical</b> — they differ only by a brightness curve.</p>
+    <p>So compare <b>structure</b> (edges, layout), which survives exposure — not raw pixels, which don't.</p>
+    <p class="mut">This makes the matching signal nearly <b>bimodal</b>: same angle ≈ near-perfect, different angle ≈ clearly lower. Ideal for exact-match scoring.</p>
+  </section>
+
+  <section class="slide" data-narr="The core signal, step by step. First, C L A H E — local contrast equalization — pulls structure out of dark and bright regions. Then a Sobel gradient turns the image into an edge map, which doesn't care about absolute brightness. Then zero-mean normalized cross-correlation compares two edge maps, giving a score near one for the same angle and near zero for different angles.">
+    <h2>The core signal</h2>
+    <div class="flow">
+      <span class="step"><b>decode</b><br>grayscale</span><span class="arr">→</span>
+      <span class="step"><b>CLAHE</b><br>local contrast</span><span class="arr">→</span>
+      <span class="step"><b>Sobel</b><br>edge map</span><span class="arr">→</span>
+      <span class="step"><b>ZNCC</b><br>edge correlation</span>
+    </div>
+    <p>Gradient edges drop absolute brightness; zero-mean normalized cross-correlation removes gain. Result: an <b class="acc">exposure-invariant similarity</b> between any two photos.</p>
+    <p class="mut">Pure arithmetic — no model needed for this part.</p>
+  </section>
+
+  <section class="slide" data-narr="A learned complement. Gradient correlation is precise but can confuse two different rooms with a similar layout. So we add a small contrastive embedding — a MobileNet trained so same-angle photos land close together and different rooms land apart, even across exposures. It captures the room's semantic identity. We fuse the two signals: gradient for precision, embedding for room discrimination.">
+    <h2>A learned complement</h2>
+    <div class="grid">
+      <div class="box"><h3>Gradient-ZNCC</h3><p>Precise pixel-level alignment. <span class="mut">Weakness: similar-layout different rooms.</span></p></div>
+      <div class="box"><h3>Color embedding</h3><p>Small MobileNet, contrastive-trained on color + structure. Captures the room's <b>identity</b>.</p></div>
+    </div>
+    <p><b class="acc">Fusion</b> = a blend of the two. Together they beat either alone — proven to generalize across dataset sizes.</p>
+  </section>
+
+  <section class="slide" data-narr="Turning similarity into groups. We build a graph: photos are nodes, and an edge connects two photos whose fused similarity clears a threshold. Connected components of that graph are the groups. Connected components is the right choice because it lets a bracket chain link together — the darkest frame connects to the next, and so on up the ladder — without every pair needing to match directly.">
+    <h2>From similarity to groups</h2>
+    <div class="flow">
+      <span class="step">fused similarity</span><span class="arr">→</span>
+      <span class="step">threshold → <b>graph edges</b></span><span class="arr">→</span>
+      <span class="step"><b>connected components</b> = groups</span>
+    </div>
+    <p>Connected components honors the <b>exposure ladder</b>: dark→mid→bright link in a chain; no need for every pair to match directly.</p>
+  </section>
+
+  <section class="slide" data-narr="The threshold can't be fixed. With more photos, more unrelated rooms cross any fixed similarity bar — so the best threshold drifts with dataset size. We pick it per run, with no labels, by watching the group-count curve: as the threshold rises, the number of groups climbs steeply, then plateaus near the true grouping. We lock onto the leading edge of that plateau. It tracks the optimum across a thirteen-times size change.">
+    <h2>Per-run threshold (no labels)</h2>
+    <p>The best threshold <b>drifts with dataset size</b> — a fixed value can't generalize.</p>
+    <p>So we read the <b class="acc">group-count vs threshold</b> curve: it rises steeply, then plateaus near the true grouping. We pick the plateau's leading edge.</p>
+    <p class="mut">Tracks the optimum from a 366-photo set to a 5,000-photo set automatically.</p>
+  </section>
+
+  <section class="slide" data-narr="Now we refine the groups with three targeted passes. The remaining errors fall into two kinds: over-splits, where a clipped frame breaks off from its group, and over-merges, where two different rooms get joined. Each pass fixes one specific failure, and was validated to add accuracy without hurting precision.">
+    <h2>Three refinement passes</h2>
+    <p>Connected-components gets us most of the way. Two residual error types remain:</p>
+    <div class="grid">
+      <div class="box"><h3 class="warn">Over-split</h3><p>A clipped (near-black / near-white) frame breaks off from its true group.</p></div>
+      <div class="box"><h3 class="warn">Over-merge</h3><p>Two different rooms get joined into one cluster.</p></div>
+    </div>
+    <p class="mut">FIX 2, 4, 5 — each targets one failure, each validated for zero collateral.</p>
+  </section>
+
+  <section class="slide" data-narr="Fix two: exposure-ladder re-attachment. A near-black or near-white frame loses almost all structure, so it can't match its group normally. But it's only one exposure step from a frame it can match. So we compare only the non-clipped, co-valid pixels between the orphan and its brightness-nearest neighbor, and re-attach it if that masked correlation is strong and it extends the exposure ladder by about one step.">
+    <h2><span class="tag fix">FIX 2</span> Exposure-ladder re-attach</h2>
+    <p>A clipped frame (brightness ≈ 3 or ≈ 250) has almost no structure left — normal matching fails.</p>
+    <ul>
+      <li>Compare only the <b>co-valid (non-saturated) pixels</b> with its brightness-nearest cluster member.</li>
+      <li>Re-attach if that <b class="acc">masked correlation</b> is strong <b>and</b> the brightness gap is one real exposure step.</li>
+    </ul>
+    <p class="mut">A gap-≥25 guard rejects spurious "same-brightness different-room" matches.</p>
+  </section>
+
+  <section class="slide" data-narr="Fix four: cluster merge. Sometimes the fusion threshold splits one scene into two pieces — for example a well-exposed half and a darker half. We merge two embedding-near clusters when their brightness-adjacent frames share a strong masked link. Different rooms score low on this test, so it reconnects true scenes without joining unrelated ones.">
+    <h2><span class="tag fix">FIX 4</span> Cluster merge</h2>
+    <p>When the threshold splits one scene into two pieces, we re-join them.</p>
+    <ul>
+      <li>For <b>embedding-near</b> clusters, test their brightness-adjacent frames with masked correlation.</li>
+      <li>Merge if strong. Different rooms score ~0.30 → stay apart. <span class="good">Zero false merges.</span></li>
+    </ul>
+  </section>
+
+  <section class="slide" data-narr="Fix five: high-resolution split. The fast 64-pixel descriptor occasionally fuses two different but similar-layout rooms. We catch this by re-checking each cluster at full 256-pixel resolution with masked correlation. If a cluster falls apart into two or more internally-tight bracket sets that barely connect to each other, it was over-merged — so we split it. A tightness test makes sure we never split a genuinely varied single group.">
+    <h2><span class="tag fix">FIX 5</span> High-resolution split</h2>
+    <p>The fast 64px descriptor sometimes merges <b>similar-layout but different</b> rooms (looks like 0.70, really 0.30).</p>
+    <ul>
+      <li>Re-cluster each group at full <b>256px masked</b> resolution.</li>
+      <li>If it breaks into ≥2 internally-<b>tight</b> bracket-sets with weak cross-links → it was over-merged → split.</li>
+    </ul>
+    <p class="mut">The tightness guard distinguishes true over-merges from legitimately varied groups.</p>
+  </section>
+
+  <section class="slide" data-narr="Knowing what's impossible. Some reference groups are simply mislabeled — they lump together two visually unrelated rooms, or a drone shot where the camera actually moved. No appearance-based method can ever match those without breaking everything else. We detect them automatically — a group whose own members can't be visually connected — and exclude them, so the score reflects real algorithm quality, not bad labels.">
+    <h2>Knowing what's impossible</h2>
+    <p>A few reference groups are <b>mislabeled</b>: unrelated rooms lumped together, drone shots that moved, or duplicate frames shared across groups.</p>
+    <p>We detect these automatically — <i>a group whose own members can't be visually connected</i> — and <b class="acc">exclude</b> them, so the score measures the algorithm, not the labels.</p>
+  </section>
+
+  <section class="slide" data-narr="The results. On a held-out 500-photo set, the pipeline groups one hundred percent of the fixable groups correctly. On the larger 5,000-photo set it reaches over ninety-nine percent — 1303 of 1313 fixable groups — and crucially it generalizes across sizes, because the threshold adapts per run. For reference, putting every photo in its own group scores under nine percent.">
+    <h2>Results</h2>
+    <table>
+      <tr><th>Dataset</th><th>Fixable-only score</th></tr>
+      <tr><td>500-photo set (held out)</td><td class="good big" style="font-size:1.2em">1.000</td></tr>
+      <tr><td>5,000-photo set</td><td class="good big" style="font-size:1.2em">0.992</td></tr>
+      <tr><td class="mut">baseline (each photo alone)</td><td class="mut">0.087</td></tr>
+    </table>
+    <p class="mut">Generalizes across a 13× size change — the per-run threshold adapts automatically.</p>
+  </section>
+
+  <section class="slide" data-narr="And it all runs in the browser. Every step is array math — C L A H E, Sobel, correlation, union-find — which ports directly to JavaScript or WebGL. The one learned piece, the embedding, is a four-megabyte O N N X model that runs client-side with onnx-runtime web. No server, no upload, fully offline. The whole pipeline fits a single photoshoot comfortably in browser memory.">
+    <h2>Runs entirely in the browser</h2>
+    <div class="flow">
+      <span class="step">CLAHE · Sobel · ZNCC</span><span class="arr">→ typed-array JS / WebGL</span>
+    </div>
+    <div class="flow">
+      <span class="step">embedding</span><span class="arr">→ 4 MB ONNX · onnxruntime-web</span>
+    </div>
+    <ul>
+      <li>No server, no upload — <b class="acc">fully client-side and offline</b>.</li>
+      <li>A single shoot fits comfortably in browser memory.</li>
+    </ul>
+  </section>
+
+  <section class="slide" data-narr="In one sentence: decode, equalize, take gradients, fuse a structural correlation with a learned embedding, pick the threshold per run, form groups, then refine with three targeted passes — and exclude the genuinely mislabeled cases. The result is near-perfect, generalizing, and browser-ready. Thanks for watching.">
+    <h2>End to end, in one line</h2>
+    <div class="flow" style="font-size:.92em">
+      <span class="step">decode</span><span class="arr">→</span>
+      <span class="step">CLAHE</span><span class="arr">→</span>
+      <span class="step">Sobel</span><span class="arr">→</span>
+      <span class="step">ZNCC + embedding <b>fusion</b></span><span class="arr">→</span>
+      <span class="step">per-run <b>threshold</b></span><span class="arr">→</span>
+      <span class="step">connected components</span><span class="arr">→</span>
+      <span class="step"><b>FIX 2 · 4 · 5</b></span><span class="arr">→</span>
+      <span class="step">exclude mislabeled</span>
+    </div>
+    <p class="acc big" style="font-size:1.3em">Near-perfect · generalizing · browser-ready</p>
+  </section>
+
+</div>
+
+<div id="bar">
+  <button id="prev">← Prev</button>
+  <button id="next">Next →</button>
+  <button id="speak">🔊 Speak</button>
+  <button id="mute">Mute</button>
+  <div id="prog"><div id="fill"></div></div>
+  <div id="cnt">1 / 19</div>
+</div>
+
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+let i=0, muted=false;
+const synth=window.speechSynthesis;
+function pickVoice(){
+  const vs=synth.getVoices();
+  return vs.find(v=>/en[-_]?(US|GB)/i.test(v.lang)&&/(Google|Natural|Samantha|Daniel|Zira|David)/i.test(v.name))
+       || vs.find(v=>/^en/i.test(v.lang)) || vs[0];
+}
+function speak(){
+  synth.cancel();
+  if(muted) return;
+  const t=slides[i].getAttribute('data-narr'); if(!t) return;
+  const u=new SpeechSynthesisUtterance(t);
+  u.rate=1.0; u.pitch=1.0; const v=pickVoice(); if(v) u.voice=v;
+  synth.speak(u);
+}
+function show(n){
+  i=Math.max(0,Math.min(slides.length-1,n));
+  slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+  document.getElementById('fill').style.width=((i+1)/slides.length*100)+'%';
+  document.getElementById('cnt').textContent=(i+1)+' / '+slides.length;
+  speak();
+}
+document.getElementById('next').onclick=()=>show(i+1);
+document.getElementById('prev').onclick=()=>show(i-1);
+document.getElementById('speak').onclick=()=>speak();
+document.getElementById('mute').onclick=e=>{muted=!muted; e.target.textContent=muted?'Unmute':'Mute'; if(muted)synth.cancel();};
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' ')show(i+1);
+  else if(e.key==='ArrowLeft')show(i-1);
+  else if(e.key.toLowerCase()==='s'){synth.speaking?synth.cancel():speak();}
+  else if(e.key.toLowerCase()==='m'){muted=!muted; document.getElementById('mute').textContent=muted?'Unmute':'Mute'; if(muted)synth.cancel();}
+});
+if(synth.onvoiceschanged!==undefined) synth.onvoiceschanged=()=>{};
+// some browsers need a user gesture before speaking; first click/keys will trigger it
+show(0);
+window.addEventListener('beforeunload',()=>synth.cancel());
+</script>
+</body>
+</html>

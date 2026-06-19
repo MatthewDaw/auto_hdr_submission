@@ -158,33 +158,37 @@ def main():
     for j in range(n): cl5[lab[j]].append(j)
     newlab=lab.copy(); nextid=int(lab.max())+1; splits=0
     for c,mem in cl5.items():
-        if len(mem)<4: continue                       # only sizable clusters can be over-merges
-        k=len(mem); IM=np.zeros((k,k),bool)
+        if len(mem)<3: continue
+        k=len(mem); IM=np.zeros((k,k),bool); MX=np.full(k,-2.0)
         for a in range(k):
             for b in range(a+1,k):
                 mz,cnt=masked_zncc(gm[mem[a]][0],gm[mem[a]][1],gm[mem[b]][0],gm[mem[b]][1])
+                MX[a]=max(MX[a],mz); MX[b]=max(MX[b],mz)
                 if mz>=0.38: IM[a,b]=IM[b,a]=True
         nc,sub=connected_components(csr_matrix(IM),directed=False)
-        if nc<2: continue
-        sizes=np.bincount(sub); big=int(np.argmax(sizes))
-        multi=[c2 for c2 in range(nc) if sizes[c2]>=2]
-        if len(multi)<2: continue                     # need >=2 real sub-groups
-        # OVER-MERGE SIGNATURE: each multi-frame sub-component must be internally TIGHT
-        # (a complete bracket set), i.e. min internal masked high. Legitimate varied
-        # groups (e.g. one group of distinct views) lack this clean structure.
-        def comp_min(comp):
-            idx=[mem[i] for i in range(k) if sub[i]==comp]; mn=2.0
-            for a in range(len(idx)):
-                for b in range(a+1,len(idx)):
-                    v,_=masked_zncc(gm[idx[a]][0],gm[idx[a]][1],gm[idx[b]][0],gm[idx[b]][1])
-                    mn=min(mn,v)
-            return mn
-        if not all(comp_min(c2)>=0.55 for c2 in multi): continue
-        splits+=1
+        sizes=np.bincount(sub,minlength=nc); big=int(np.argmax(sizes)); changed=False
+        # Pass 1: split off WELL-EXPOSED frames that don't masked-link to the cluster
+        # (wrongly-merged singletons, e.g. 25823). Clipped orphans (extreme B) are
+        # protected — FIX2 legitimately attaches them with low masked overlap.
         for i,m in enumerate(mem):
-            comp=sub[i]
-            newlab[m]= (nextid+comp) if sizes[comp]>=2 and comp!=big else lab[m]
-        nextid+=nc
+            if sizes[sub[i]]==1 and 55<=B[m]<=200 and MX[i]<0.32:
+                newlab[m]=nextid; nextid+=1; changed=True
+        # Pass 2: multiple internally-TIGHT bracket-sets wrongly merged (coarse-descriptor
+        # over-merge). Tightness guard distinguishes from legitimate varied-content groups.
+        multi=[c2 for c2 in range(nc) if sizes[c2]>=2]
+        if len(multi)>=2:
+            def comp_min(comp):
+                idx=[mem[i] for i in range(k) if sub[i]==comp]; mn=2.0
+                for a in range(len(idx)):
+                    for b in range(a+1,len(idx)):
+                        v,_=masked_zncc(gm[idx[a]][0],gm[idx[a]][1],gm[idx[b]][0],gm[idx[b]][1])
+                        mn=min(mn,v)
+                return mn
+            if all(comp_min(c2)>=0.55 for c2 in multi):
+                for i,m in enumerate(mem):
+                    if sizes[sub[i]]>=2 and sub[i]!=big: newlab[m]=nextid+sub[i]
+                nextid+=nc; changed=True
+        if changed: splits+=1
     predm=defaultdict(set)
     for i,f in enumerate(files): predm[newlab[i]].add(f)
     predlk=set(frozenset(v) for v in predm.values())
