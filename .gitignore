@@ -8,12 +8,10 @@ sample/
 __pycache__/
 *.pyc
 
+# Process / run scratch
+*.pid
+*.log
+
 # Environment
 .venv/
-
-# Intermediate model checkpoints (keep only the chosen embed2_best.pt + ONNX)
-embed_best.pt
-embed3_best.pt
-embed224_best.pt
-train_embed224.py
-build_imgcache_color224.py
+.idea/
