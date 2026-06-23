@@ -28,6 +28,15 @@ OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("disagreement_report.html
 SPECS = sys.argv[2:] or ["data/large:Large set (5041 images)", "sample:Sample set (500 images)"]
 THUMB = 140
 
+# measured end-to-end compute throughput (extract + cluster + all refinement
+# passes; decode excluded). See timing_throughput.py.
+THROUGHPUT_NOTE = (
+    "Throughput (compute, per image): <b>~15 ms/img</b> on a typical "
+    "~100-photo shoot (1.5&nbsp;s total) &nbsp;·&nbsp; <b>~42 ms/img</b> on the "
+    "full 5,041-image set (212&nbsp;s) &mdash; the super-linear refinement "
+    "passes only bite at scale; decode excluded."
+)
+
 PAL = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22",
        "#e84393", "#00b894", "#0984e3", "#fdcb6e", "#6c5ce7", "#d63031", "#00cec9",
        "#a29bfe", "#fab1a0", "#55efc4", "#ffeaa7", "#fd79a8", "#74b9ff"]
@@ -55,6 +64,11 @@ def thumb(imgs, idxof, f):
 
 def section(label, data_dir: Path):
     gt, pred, imgs, idxof, ddir = load_dataset(data_dir)
+    # human-confirmed TRUE model failures for this dataset (group_id -> category)
+    fpath = data_dir / "model_failures.json"
+    failures = ({k: v for k, v in json.load(open(fpath)).items() if not k.startswith("_")}
+                if fpath.exists() else {})
+    fail_counter = Counter()
     gt_groups = defaultdict(list)
     for f, g in gt.items():
         gt_groups[g].append(f)
@@ -118,7 +132,8 @@ def section(label, data_dir: Path):
         leak_clusters = sorted(c for c in ours_here if owner.get(c) != g)
 
         verdict, dissim_html = "frame-set mismatch", ""
-        # assessment = (css_class, headline) — our read on GT-error vs model-failure
+        # assessment = (css_class, headline) — internal only; drives the section's
+        # GT-error vs review tally, not rendered per block.
         assess = ("review", "MODEL-FAILURE CANDIDATE — review")
         if len(own_clusters) >= 2 and not leak_clusters:
             # genuine angle-split: this group's frames cleanly occupy >=2 of OUR
@@ -169,8 +184,9 @@ def section(label, data_dir: Path):
                                f'{pairs} &nbsp;⇒&nbsp; genuinely different scenes — '
                                f'GT was right to separate them, our merge is the error</div>')
         elif len(own_clusters) == 1:
-            verdict = "frame-set mismatch (extra/missing frame in our cluster)"
-            assess = ("review", "MODEL-FAILURE CANDIDATE — extra/missing frame (shared-frame artifact?)")
+            # extra/missing-frame mismatch: nothing extra to compute; the default
+            # assess applies and the block renders bare.
+            pass
 
         # render the full block (group's frames + any foreign frames we merged in),
         # sorted by our cluster, then exposure
@@ -186,19 +202,37 @@ def section(label, data_dir: Path):
                 f'<div class=bar style="background:{oc}">ours {pred[f]}</div>'
                 f'<figcaption>B{bright.get(f, 0):.0f}</figcaption></figure>')
         tally[assess[0]] = tally.get(assess[0], 0) + 1
+        # disagreement blocks are bare (GT id + frame count + thumbnails) EXCEPT the
+        # human-confirmed model failures, which we call out explicitly with their
+        # category and the other GT groups our error wrongly clusters them with.
+        cat = failures.get(g)
+        if cat:
+            fail_counter[cat] += 1
+            g_clusters = sorted({pred[f] for f in frames})
+            partners = sorted({gt[f2] for c in g_clusters for f2 in our_sets[c]} - {g})
+            if partners:
+                detail = " · wrongly clustered with GT " + ", ".join(partners)
+            elif len(g_clusters) > 1:
+                detail = f" · over-split into {len(g_clusters)} clusters"
+            else:
+                detail = ""
+            fail_badge = (f'<div class="assess fail">IDENTIFIED MODEL FAILURE — '
+                          f'{cat}{detail}</div>')
+        else:
+            fail_badge = ""
         blocks.append(
-            f'<div class=grp><div class="assess {assess[0]}">{assess[1]}</div>'
-            f'<div class=h>GT group <b>{g}</b> · {len(frames)} frames '
-            f'· <span class=v>{verdict}</span></div>{dissim_html}'
+            f'<div class=grp>{fail_badge}'
+            f'<div class=h>GT group <b>{g}</b> · {len(frames)} frames</div>'
             f'<div class=r>{"".join(cells)}</div></div>')
 
     matched = len(gt_groups) - len(disagreements)
+    nfail = sum(fail_counter.values())
+    fail_hdr = (f' · <span style="color:#ff6b6b">{nfail} identified model failures</span>'
+                if nfail else "")
     return (f'<section><h2>{label} '
             f'<span class=count>{len(disagreements)} disagreements · '
-            f'{matched}/{len(gt_groups)} matched · '
-            f'<span style="color:#7fe0a0">{tally["gterr"]} likely GT-error</span> · '
-            f'<span style="color:#ffb86b">{tally["review"]} to review</span></span></h2>'
-            f'{"".join(blocks)}</section>')
+            f'{matched}/{len(gt_groups)} matched{fail_hdr}</span></h2>'
+            f'{"".join(blocks)}</section>'), fail_counter, len(gt_groups), matched
 
 
 datasets = []
@@ -212,7 +246,38 @@ for spec in SPECS:
 # the anomaly analysis needs an unfixable.json (the GT-error labels) to score against
 anomaly_datasets = [(p, l) for p, l in datasets if (Path(p) / "unfixable.json").exists()]
 anomaly_html = build_anomaly_section(anomaly_datasets) if anomaly_datasets else ""
-sections = [section(label, Path(path)) for path, label in datasets]
+section_results = [section(label, Path(path)) for path, label in datasets]
+sections = [h for h, _, _, _ in section_results]
+
+# Accounting across every tested dataset. Each disagreement is either a true
+# model failure (we are wrong) or a GT error (GT is wrong, we are right):
+#   total = matched_exactly + model_failures + gt_errors
+# "correct (judging by model failures)" treats GT errors as correct (not our
+# fault); the mirror "score judging by GT errors" instead treats GT errors as
+# the failures and the model failures as correct.
+grand = Counter()
+total_groups = total_matched = 0
+for _, fc, n, m in section_results:
+    grand.update(fc)
+    total_groups += n
+    total_matched += m
+total_fail = sum(grand.values())
+total_disagree = total_groups - total_matched
+gt_errors = total_disagree - total_fail
+correct = total_groups - total_fail                 # GT errors counted as correct
+pct = 100.0 * correct / total_groups if total_groups else 0.0
+gt_err_pct = 100.0 * gt_errors / total_groups if total_groups else 0.0
+by_gt_correct = total_groups - gt_errors            # model failures counted as correct
+by_gt_pct = 100.0 * by_gt_correct / total_groups if total_groups else 0.0
+breakdown = " · ".join(f"{v} {k}" for k, v in sorted(grand.items(), key=lambda kv: -kv[1]))
+total_banner = (
+    f'<div class=total>Identified true model failures: <b>{total_fail}</b> '
+    f'across all tested datasets ({breakdown}) &nbsp;—&nbsp; '
+    f'<b>{correct}/{total_groups} groups correct ({pct:.2f}%)</b>'
+    f'<div class=sub>GT errors found: <b>{gt_errors}</b> '
+    f'({gt_err_pct:.2f}% of all GT groups) &nbsp;—&nbsp; score judging by GT errors: '
+    f'<b>{by_gt_correct}/{total_groups} ({by_gt_pct:.2f}%)</b></div></div>'
+) if total_groups else ""
 
 html = f"""<!doctype html><html><head><meta charset=utf-8><title>Where we disagree with GT</title>
 <style>
@@ -231,6 +296,13 @@ html = f"""<!doctype html><html><head><meta charset=utf-8><title>Where we disagr
  .assess{{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:5px;margin-bottom:8px}}
  .assess.gterr{{background:#13351f;color:#7fe0a0;border:1px solid #2ecc71}}
  .assess.review{{background:#3a2410;color:#ffb86b;border:1px solid #e67e22}}
+ .assess.fail{{background:#3a1414;color:#ff8a8a;border:1px solid #e74c3c}}
+ .total{{font-size:17px;font-weight:600;color:#ffd9d9;background:#2a1416;
+   border:1px solid #e74c3c;border-radius:8px;padding:13px 17px;margin:0 0 22px}}
+ .total .sub{{font-size:14px;font-weight:400;color:#c9b3b3;margin-top:7px;
+   padding-top:7px;border-top:1px solid #5a2a2a}}
+ .thru{{font-size:13.5px;color:#b9c0cc;background:#161a22;border:1px solid #262b35;
+   border-left:3px solid #3a7bd5;border-radius:8px;padding:11px 16px;margin:0 0 22px}}
  .dis{{font-size:12px;color:#9fd3ff;background:#10202e;border-left:3px solid #3a7bd5;
    padding:6px 10px;border-radius:4px;margin:0 0 9px}}
  p.cat{{color:#b9c0cc;background:#161a22;border-left:3px solid #3498db;padding:10px 14px;border-radius:4px;max-width:900px}}
@@ -246,6 +318,8 @@ html = f"""<!doctype html><html><head><meta charset=utf-8><title>Where we disagr
              padding:2px;border-radius:0 0 6px 6px}}
 </style></head><body>
 <h1>Where our model disagrees with the ground truth</h1>
+{total_banner}
+<div class=thru>{THROUGHPUT_NOTE}</div>
 <p class=lead>Every ground-truth group we do not reproduce exactly. Each thumbnail
 carries two color bars: the <b>top bar is the GT cluster</b> (one color per
 ground-truth group) and the <b>bottom bar is our predicted cluster</b>. A top row

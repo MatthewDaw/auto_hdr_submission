@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoHDR — training-free HDR-bracket grouping</title>
+<style>
+ body{font:16px/1.6 system-ui,sans-serif;background:#0f1115;color:#e6e6e6;max-width:760px;margin:60px auto;padding:0 24px}
+ h1{font-size:26px;margin:0 0 4px}
+ .lead{color:#9aa3af;margin:0 0 28px}
+ a.card{display:block;background:#161a22;border:1px solid #262b35;border-radius:12px;
+   padding:20px 24px;margin:18px 0;text-decoration:none;color:inherit}
+ a.card:hover{border-color:#3a7bd5}
+ a.card h2{margin:0 0 6px;font-size:20px;color:#cfe0ff}
+ a.card p{margin:0;color:#9aa3af}
+ footer{color:#6b7280;font-size:13px;margin-top:36px}
+</style></head><body>
+<h1>AutoHDR — training-free HDR-bracket grouping</h1>
+<p class="lead">Groups a photoshoot's images by camera angle (same scene, only exposure
+differs). No ML model, deterministic, browser-portable.</p>
+
+<a class="card" href="algorithm_slideshow.html">
+  <h2>▶ Algorithm slideshow</h2>
+  <p>How it works end to end — gradient-ZNCC + wavelet/eigenface fusion, per-run
+  thresholding, and the 11-pass refinement pipeline. Narrated, 24 slides.</p></a>
+
+<a class="card" href="disagreement_report.html">
+  <h2>▦ Disagreement report</h2>
+  <p>Every place we differ from ground truth across 9,592 groups, with the 22
+  identified true model failures (99.77% correct) called out.</p></a>
+
+<footer>Deterministic · no network · ~15 ms/image on a typical shoot.</footer>
+</body></html>

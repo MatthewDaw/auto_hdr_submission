@@ -1,0 +1,791 @@
+{
+ "note": "coherence-flagged AND pipeline-missed = genuine ground-truth errors",
+ "groups": {
+  "22994": {
+   "reason": "drone-drift",
+   "frames": 2,
+   "subscenes": 2,
+   "members": [
+    [
+     "g22994_DJI_20260224135141_0098_D.jpg",
+     114.08566284179688,
+     0
+    ],
+    [
+     "g22994_DJI_20260224135201_0099_D.jpg",
+     117.68162536621094,
+     1
+    ]
+   ]
+  },
+  "60452": {
+   "reason": "multi-scene/label-noise",
+   "frames": 9,
+   "subscenes": 2,
+   "members": [
+    [
+     "g60452_IMG_0058.jpg",
+     128.6035919189453,
+     0
+    ],
+    [
+     "g60452_IMG_0059.jpg",
+     51.681793212890625,
+     0
+    ],
+    [
+     "g60452_IMG_0060.jpg",
+     206.19007873535156,
+     0
+    ],
+    [
+     "g60452_IMG_0061.jpg",
+     131.76783752441406,
+     1
+    ],
+    [
+     "g60452_IMG_0062.jpg",
+     54.530059814453125,
+     1
+    ],
+    [
+     "g60452_IMG_0063.jpg",
+     208.39175415039062,
+     1
+    ],
+    [
+     "g60452_IMG_0064.jpg",
+     130.4912109375,
+     1
+    ],
+    [
+     "g60452_IMG_0065.jpg",
+     53.47077941894531,
+     1
+    ],
+    [
+     "g60452_IMG_0066.jpg",
+     207.2144012451172,
+     1
+    ]
+   ]
+  },
+  "40615": {
+   "reason": "multi-scene/label-noise",
+   "frames": 12,
+   "subscenes": 2,
+   "members": [
+    [
+     "g40615_DSC_9125.jpg",
+     111.00724792480469,
+     0
+    ],
+    [
+     "g40615_DSC_9126.jpg",
+     13.960128784179688,
+     0
+    ],
+    [
+     "g40615_DSC_9127.jpg",
+     42.50469970703125,
+     0
+    ],
+    [
+     "g40615_DSC_9128.jpg",
+     190.06520080566406,
+     0
+    ],
+    [
+     "g40615_DSC_9129.jpg",
+     232.3034210205078,
+     0
+    ],
+    [
+     "g40615_DSC_9130.jpg",
+     110.3289794921875,
+     0
+    ],
+    [
+     "g40615_DSC_9131.jpg",
+     13.250381469726562,
+     0
+    ],
+    [
+     "g40615_DSC_9132.jpg",
+     42.50201416015625,
+     0
+    ],
+    [
+     "g40615_DSC_9133.jpg",
+     190.961181640625,
+     0
+    ],
+    [
+     "g40615_DSC_9134.jpg",
+     232.57064819335938,
+     0
+    ],
+    [
+     "g40615_DSC_9136.jpg",
+     18.504074096679688,
+     1
+    ],
+    [
+     "g40615_DSC_9135.jpg",
+     121.18667602539062,
+     1
+    ]
+   ]
+  },
+  "40599": {
+   "reason": "multi-scene/label-noise",
+   "frames": 20,
+   "subscenes": 2,
+   "members": [
+    [
+     "g40599_DSC_9015.jpg",
+     96.43843078613281,
+     0
+    ],
+    [
+     "g40599_DSC_9016.jpg",
+     9.5928955078125,
+     0
+    ],
+    [
+     "g40599_DSC_9018.jpg",
+     182.8527069091797,
+     0
+    ],
+    [
+     "g40599_DSC_9017.jpg",
+     34.929168701171875,
+     0
+    ],
+    [
+     "g40599_DSC_9019.jpg",
+     236.98428344726562,
+     0
+    ],
+    [
+     "g40599_DSC_9020.jpg",
+     99.85960388183594,
+     1
+    ],
+    [
+     "g40599_DSC_9021.jpg",
+     10.045944213867188,
+     1
+    ],
+    [
+     "g40599_DSC_9022.jpg",
+     37.76768493652344,
+     1
+    ],
+    [
+     "g40599_DSC_9023.jpg",
+     184.9256591796875,
+     1
+    ],
+    [
+     "g40599_DSC_9024.jpg",
+     238.6553497314453,
+     1
+    ],
+    [
+     "g40599_DSC_9025.jpg",
+     45.192901611328125,
+     1
+    ],
+    [
+     "g40599_DSC_9026.jpg",
+     2.828582763671875,
+     1
+    ],
+    [
+     "g40599_DSC_9027.jpg",
+     12.996109008789062,
+     1
+    ],
+    [
+     "g40599_DSC_9028.jpg",
+     114.59089660644531,
+     1
+    ],
+    [
+     "g40599_DSC_9029.jpg",
+     197.57015991210938,
+     1
+    ],
+    [
+     "g40599_DSC_9030.jpg",
+     63.20697021484375,
+     1
+    ],
+    [
+     "g40599_DSC_9031.jpg",
+     4.8495330810546875,
+     1
+    ],
+    [
+     "g40599_DSC_9032.jpg",
+     20.246902465820312,
+     1
+    ],
+    [
+     "g40599_DSC_9033.jpg",
+     142.59759521484375,
+     1
+    ],
+    [
+     "g40599_DSC_9034.jpg",
+     218.04287719726562,
+     1
+    ]
+   ]
+  },
+  "25171": {
+   "reason": "multi-scene/label-noise",
+   "frames": 2,
+   "subscenes": 2,
+   "members": [
+    [
+     "g25171__A3A6825.jpg",
+     129.43882751464844,
+     0
+    ],
+    [
+     "g25171__A3A6824.jpg",
+     123.17413330078125,
+     1
+    ]
+   ]
+  },
+  "25789": {
+   "reason": "drone-drift",
+   "frames": 2,
+   "subscenes": 2,
+   "members": [
+    [
+     "g25789_DJI_0095.jpg",
+     133.67608642578125,
+     0
+    ],
+    [
+     "g25789_DJI_0089.jpg",
+     123.99589538574219,
+     1
+    ]
+   ]
+  },
+  "39901": {
+   "reason": "multi-scene/label-noise",
+   "frames": 4,
+   "subscenes": 2,
+   "members": [
+    [
+     "g39901_5B6A6364.jpg",
+     196.92984008789062,
+     0
+    ],
+    [
+     "g39901_5B6A6365.jpg",
+     16.410964965820312,
+     1
+    ],
+    [
+     "g39901_5B6A6366.jpg",
+     30.263671875,
+     1
+    ],
+    [
+     "g39901_5B6A6367.jpg",
+     87.46922302246094,
+     1
+    ]
+   ]
+  },
+  "84850": {
+   "reason": "multi-scene/label-noise",
+   "frames": 14,
+   "subscenes": 2,
+   "members": [
+    [
+     "g84850_P1944670.jpg",
+     112.8271484375,
+     0
+    ],
+    [
+     "g84850_P1944671.jpg",
+     75.07723999023438,
+     0
+    ],
+    [
+     "g84850_P1944672.jpg",
+     165.60751342773438,
+     0
+    ],
+    [
+     "g84850_P1944673.jpg",
+     43.945648193359375,
+     0
+    ],
+    [
+     "g84850_P1944674.jpg",
+     209.02719116210938,
+     0
+    ],
+    [
+     "g84850_P1944675.jpg",
+     26.789077758789062,
+     0
+    ],
+    [
+     "g84850_P1944676.jpg",
+     237.36744689941406,
+     0
+    ],
+    [
+     "g84850_P1944677.jpg",
+     125.01766967773438,
+     1
+    ],
+    [
+     "g84850_P1944678.jpg",
+     90.63461303710938,
+     1
+    ],
+    [
+     "g84850_P1944679.jpg",
+     176.09912109375,
+     1
+    ],
+    [
+     "g84850_P1944680.jpg",
+     65.407470703125,
+     1
+    ],
+    [
+     "g84850_P1944681.jpg",
+     213.62564086914062,
+     1
+    ],
+    [
+     "g84850_P1944682.jpg",
+     39.89894104003906,
+     1
+    ],
+    [
+     "g84850_P1944683.jpg",
+     240.89096069335938,
+     1
+    ]
+   ]
+  },
+  "11393": {
+   "reason": "multi-scene/label-noise",
+   "frames": 15,
+   "subscenes": 3,
+   "members": [
+    [
+     "g11393__M5A4978.jpg",
+     60.326202392578125,
+     0
+    ],
+    [
+     "g11393__M5A4977.jpg",
+     98.46908569335938,
+     0
+    ],
+    [
+     "g11393__M5A4979.jpg",
+     146.58253479003906,
+     0
+    ],
+    [
+     "g11393__M5A4980.jpg",
+     99.36996459960938,
+     1
+    ],
+    [
+     "g11393__M5A4981.jpg",
+     64.55348205566406,
+     1
+    ],
+    [
+     "g11393__M5A4982.jpg",
+     143.13185119628906,
+     1
+    ],
+    [
+     "g11393__M5A4983.jpg",
+     109.49539184570312,
+     1
+    ],
+    [
+     "g11393__M5A4984.jpg",
+     72.5673828125,
+     1
+    ],
+    [
+     "g11393__M5A4985.jpg",
+     154.98919677734375,
+     1
+    ],
+    [
+     "g11393__M5A4986.jpg",
+     111.26950073242188,
+     2
+    ],
+    [
+     "g11393__M5A4987.jpg",
+     74.54814147949219,
+     2
+    ],
+    [
+     "g11393__M5A4988.jpg",
+     154.05300903320312,
+     2
+    ],
+    [
+     "g11393__M5A4989.jpg",
+     87.34512329101562,
+     2
+    ],
+    [
+     "g11393__M5A4990.jpg",
+     55.77288818359375,
+     2
+    ],
+    [
+     "g11393__M5A4991.jpg",
+     126.71815490722656,
+     2
+    ]
+   ]
+  },
+  "76388": {
+   "reason": "multi-scene/label-noise",
+   "frames": 4,
+   "subscenes": 2,
+   "members": [
+    [
+     "g76388_DSC04140.jpg",
+     64.08619689941406,
+     0
+    ],
+    [
+     "g76388_DSC04141.jpg",
+     210.3888397216797,
+     1
+    ],
+    [
+     "g76388_DSC04142.jpg",
+     119.00335693359375,
+     1
+    ],
+    [
+     "g76388_DSC04143.jpg",
+     41.4222412109375,
+     1
+    ]
+   ]
+  },
+  "47008": {
+   "reason": "multi-scene/label-noise",
+   "frames": 6,
+   "subscenes": 2,
+   "members": [
+    [
+     "g47008_AJ - 124A1058.jpg",
+     99.94171142578125,
+     0
+    ],
+    [
+     "g47008_AJ - 124A1059.jpg",
+     22.648239135742188,
+     0
+    ],
+    [
+     "g47008_AJ - 124A1060.jpg",
+     193.6598358154297,
+     0
+    ],
+    [
+     "g47008_AJ - 124A1061.jpg",
+     104.41438293457031,
+     1
+    ],
+    [
+     "g47008_AJ - 124A1062.jpg",
+     23.932281494140625,
+     1
+    ],
+    [
+     "g47008_AJ - 124A1063.jpg",
+     202.796630859375,
+     1
+    ]
+   ]
+  },
+  "28943": {
+   "reason": "multi-scene/label-noise",
+   "frames": 6,
+   "subscenes": 2,
+   "members": [
+    [
+     "g28943_EM1A4846 Brandon Wong.jpg",
+     100.1766357421875,
+     0
+    ],
+    [
+     "g28943_EM1A4847 Brandon Wong.jpg",
+     42.15057373046875,
+     0
+    ],
+    [
+     "g28943_EM1A4848 Brandon Wong.jpg",
+     200.60789489746094,
+     0
+    ],
+    [
+     "g28943_EM1A4849 Brandon Wong.jpg",
+     89.35476684570312,
+     1
+    ],
+    [
+     "g28943_EM1A4850 Brandon Wong.jpg",
+     21.825775146484375,
+     1
+    ],
+    [
+     "g28943_EM1A4851 Brandon Wong.jpg",
+     187.43434143066406,
+     1
+    ]
+   ]
+  },
+  "27326": {
+   "reason": "multi-scene/label-noise",
+   "frames": 11,
+   "subscenes": 2,
+   "members": [
+    [
+     "g27326_DSC05431.jpg",
+     78.74830627441406,
+     0
+    ],
+    [
+     "g27326_DSC05432.jpg",
+     78.33531188964844,
+     0
+    ],
+    [
+     "g27326_DSC05433.jpg",
+     26.412139892578125,
+     0
+    ],
+    [
+     "g27326_DSC05434.jpg",
+     160.2588653564453,
+     0
+    ],
+    [
+     "g27326_DSC05437.jpg",
+     105.25468444824219,
+     1
+    ],
+    [
+     "g27326_DSC05436.jpg",
+     227.89385986328125,
+     0
+    ],
+    [
+     "g27326_DSC05435.jpg",
+     6.673797607421875,
+     0
+    ],
+    [
+     "g27326_DSC05438.jpg",
+     40.88330078125,
+     1
+    ],
+    [
+     "g27326_DSC05441.jpg",
+     240.86746215820312,
+     1
+    ],
+    [
+     "g27326_DSC05440.jpg",
+     10.689651489257812,
+     1
+    ],
+    [
+     "g27326_DSC05439.jpg",
+     189.22792053222656,
+     1
+    ]
+   ]
+  },
+  "31579": {
+   "reason": "duplicate-frame-across-groups (identical frame shared by two different-scene reference groups; bridge=1.00 but scenes differ, masked 0.08)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
+  },
+  "94278": {
+   "reason": "multi-scene/label-noise",
+   "frames": 15,
+   "subscenes": 3,
+   "members": [
+    [
+     "g94278_DSC00556.jpg",
+     19.16729736328125,
+     0
+    ],
+    [
+     "g94278_DSC00557.jpg",
+     73.90437316894531,
+     0
+    ],
+    [
+     "g94278_DSC00558.jpg",
+     160.21762084960938,
+     0
+    ],
+    [
+     "g94278_DSC00559.jpg",
+     232.52767944335938,
+     0
+    ],
+    [
+     "g94278_DSC00560.jpg",
+     252.53746032714844,
+     0
+    ],
+    [
+     "g94278_DSC00701.jpg",
+     17.985916137695312,
+     1
+    ],
+    [
+     "g94278_DSC00702.jpg",
+     58.45574951171875,
+     1
+    ],
+    [
+     "g94278_DSC00703.jpg",
+     125.18247985839844,
+     1
+    ],
+    [
+     "g94278_DSC00704.jpg",
+     191.32569885253906,
+     1
+    ],
+    [
+     "g94278_DSC00705.jpg",
+     229.5152130126953,
+     1
+    ],
+    [
+     "g94278_DSC00721.jpg",
+     24.444168090820312,
+     2
+    ],
+    [
+     "g94278_DSC00722.jpg",
+     63.30133056640625,
+     2
+    ],
+    [
+     "g94278_DSC00723.jpg",
+     130.7449493408203,
+     2
+    ],
+    [
+     "g94278_DSC00724.jpg",
+     200.754638671875,
+     2
+    ],
+    [
+     "g94278_DSC00725.jpg",
+     244.58694458007812,
+     2
+    ]
+   ]
+  },
+  "31580": {
+   "reason": "duplicate-frame-across-groups (identical frame shared by two different-scene reference groups; bridge=1.00 but scenes differ, masked 0.08)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
+  },
+  "9245": {
+   "reason": "multi-scene mislabel (well-exposed sub-scenes are different rooms; coherence 0.17 < 0.4)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
+  },
+  "38084": {
+   "reason": "multi-scene mislabel (well-exposed sub-scenes are different rooms; coherence 0.27 < 0.4)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
+  },
+  "73234": {
+   "reason": "multi-scene mislabel (well-exposed sub-scenes are different rooms; coherence 0.32 < 0.4)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
+  },
+  "40667": {
+   "reason": "multi-scene mislabel (well-exposed sub-scenes are different rooms; coherence 0.36 < 0.4)",
+   "frames": null,
+   "subscenes": 2,
+   "members": []
+  },
+  "56453": {
+   "reason": "information-limited: contains a B2 frame with ~0.1% valid pixels (structurally dead); rest of group coherent at masked 0.85",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "56460": {
+   "reason": "information-limited: contains a B0 frame with ~0.1% valid pixels (structurally dead); rest coherent at 0.82",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "22901": {
+   "reason": "information-limited: ENTIRE group underexposed (all frames B2-52, no well-exposed reference exists)",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "35098": {
+   "reason": "information-limited: B254 pure-white frame, own-group match only 0.27 (below structural-signal floor); rest coherent at 0.72",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "10370": {
+   "reason": "information-limited: B254 pure-white frame (0.8% valid px) matches own room 0.43 vs a DIFFERENT room 0.42 - indistinguishable",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "82871": {
+   "reason": "information-limited: B253 frame ties its own room (0.33) with a different room (0.33); rest coherent at 0.84",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  },
+  "70877": {
+   "reason": "information-limited: near-black B2/B9 frames are noise-dominated (own match 0.03/0.09 < wrong-room 0.17/0.30); rest coherent at 0.97",
+   "category": "information_limited",
+   "frames": null,
+   "members": []
+  }
+ }
+}
